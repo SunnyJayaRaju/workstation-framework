@@ -9,7 +9,11 @@
     "[markdown]": {
         "editor.wordWrap": "bounded",
         "editor.wordWrapColumn": 100,
-        "editor.quickSuggestions": false,
+        "editor.quickSuggestions": {
+            "comments": "off",
+            "strings": "off",
+            "other": "off"
+        },
         "files.trimTrailingWhitespace": false
     },
     "[shellscript]": {
