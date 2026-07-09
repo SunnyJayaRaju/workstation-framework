@@ -8,7 +8,9 @@
 
 - [Overview](#overview)
 - [Why This Project?](#why-this-project)
+- [Design Philosophy](#design-philosophy)
 - [Key Features](#key-features)
+- [Technology Stack](#technology-stack)
 - [Release Status](#release-status)
 - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
@@ -90,25 +92,22 @@ Rather than collecting unrelated scripts, the project treats workstation managem
 
 ## Technology Stack
 
+- macOS
 - Bash
 - Git
 - GitHub
+- Markdown
+- Visual Studio Code
 - ShellCheck
 - shfmt
-- Visual Studio Code
-- Markdown
-- macOS
 
 ---
 
 ## Release Status
 
-Current release stage:
-
-**Version 1.0 (In Progress)**
+**Current Version:** 1.0.0 (Release Candidate)
 
 Completed:
-
 - Repository foundation
 - Documentation framework
 - Core shell libraries
@@ -118,18 +117,16 @@ Completed:
 
 Remaining before Version 1.0:
 
-- Repository publication
-- License
+- GitHub repository publication
 - GitHub Actions
-- README refinement
-- Version 1.0 release
+- Initial public release (v1.0.0)
 
 ---
 
 ## Repository Structure
 
 ```text
-Developer-Workstation-Framework/
+workstation-framework/
 ├── assets/
 ├── docs/
 │   ├── ARCHITECTURE.md
@@ -147,6 +144,7 @@ Developer-Workstation-Framework/
 ├── tests/
 ├── .editorconfig
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
@@ -172,7 +170,7 @@ Clone the repository:
 ```bash
 git clone <repository-url>
 
-cd Developer-Workstation-Framework
+cd workstation-framework
 ```
 
 Run the bootstrap utility:
@@ -190,7 +188,7 @@ Run the bootstrap utility:
 | `check-project.sh` | Verify the repository structure. |
 | `shell-quality.sh` | Run Bash syntax, ShellCheck, and formatting validation. |
 | `backup.sh` | Create timestamped backups of configuration files. |
-| `bootstrap.sh` | Prepare and install framework utilities. |
+| `bootstrap.sh` | Install and initialize framework utilities. |
 
 ---
 
@@ -239,24 +237,20 @@ Planned enhancements include:
 
 ---
 
-## Project Status
+## Documentation
 
-**Current Stage:** Version 1.0 Release Candidate
+Additional project documentation is available in the `docs/` directory.
 
-The core framework has been implemented and validated.
-
-Current efforts are focused on:
-
-- Final documentation review
-- MIT License
-- GitHub repository publication
-- GitHub Actions
-- Version 1.0 release
+- [Architecture](docs/ARCHITECTURE.md)
+- [Project Roadmap](docs/PROJECT_ROADMAP.md)
+- [Shell Coding Standards](docs/SHELL_CODING_STANDARDS.md)
+- [Code Review Checklist](docs/CODE_REVIEW_CHECKLIST.md)
+- [Changelog](docs/CHANGELOG.md)
 
 ---
 
 ## License
 
-This project will be released under the MIT License.
+This project is licensed under the MIT License.
 
-The full license text will be added before the Version 1.0 release.
+See the [LICENSE](LICENSE) file for details.
