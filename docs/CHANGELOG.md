@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-The format follows the principles of Keep a Changelog and the project follows Semantic Versioning.
+The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
 ---
 
@@ -10,13 +10,15 @@ The format follows the principles of Keep a Changelog and the project follows Se
 
 ### Planned
 
-- Publish the repository to GitHub
-- Configure GitHub Actions
-- Create the initial v1.0.0 release
+- GitHub Actions continuous integration
+- Automated quality checks
+- Basic test suite
+- Version 1.0.0 release
+- GitHub release notes
 
 ---
 
-## [1.0.0] - Unreleased
+## [1.0.0-rc]
 
 ### Added
 
@@ -26,7 +28,8 @@ The format follows the principles of Keep a Changelog and the project follows Se
 - Standard project directory structure
 - Git ignore rules
 - EditorConfig
-- Visual Studio Code workspace settings
+- Visual Studio Code workspace support
+- MIT License
 
 #### Documentation
 
@@ -39,27 +42,37 @@ The format follows the principles of Keep a Changelog and the project follows Se
 
 #### Shell Libraries
 
-- logging.sh
-- checks.sh
-- filesystem.sh
-- colors.sh
+- `logging.sh`
+- `checks.sh`
+- `filesystem.sh`
+- `colors.sh`
 
-#### Utilities
+#### Framework Utilities
 
-- check-project.sh
-- shell-quality.sh
-- backup.sh
-- bootstrap.sh
+- `backup.sh`
+- `bootstrap.sh`
+- `check-project.sh`
+- `clean.sh`
+- `doctor.sh`
+- `install.sh`
+- `restore.sh`
+- `shell-quality.sh`
+- `sync.sh`
+- `uninstall.sh`
+- `update.sh`
 
-#### Quality Standards
+#### Quality
 
 - Bash syntax validation
 - ShellCheck integration
 - shfmt formatting verification
+- Project ShellCheck configuration (`.shellcheckrc`)
 
-#### Licensing
+#### Repository
 
-- MIT License
+- Initial GitHub publication
+- Structured commit history
+- Version-controlled development workflow
 
 ---
 
