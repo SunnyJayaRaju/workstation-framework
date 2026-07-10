@@ -1,0 +1,42 @@
+name: Shell Quality
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  shell-quality:
+    name: Shell Quality Checks
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Install shfmt
+        run: |
+          sudo snap install shfmt
+
+      - name: Verify Bash syntax
+        run: |
+          find scripts -type f -name "*.sh" \
+            -exec bash -n {} \;
+
+      - name: Run ShellCheck
+        run: |
+          shellcheck -x $(find scripts -type f -name "*.sh")
+
+      - name: Check formatting
+        run: |
+          shfmt -d scripts
