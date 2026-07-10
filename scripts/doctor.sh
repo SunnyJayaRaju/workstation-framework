@@ -34,15 +34,13 @@ echo
 
 log_info "Checking framework structure..."
 
-if directory_exists "${SCRIPT_DIR}/lib"
-then
+if directory_exists "${SCRIPT_DIR}/lib"; then
     log_pass "scripts/lib found"
 else
     log_fail "scripts/lib missing"
 fi
 
-if directory_exists "${SCRIPT_DIR}"
-then
+if directory_exists "${SCRIPT_DIR}"; then
     log_pass "scripts directory found"
 else
     log_fail "scripts directory missing"
@@ -52,10 +50,8 @@ echo
 
 log_info "Checking required commands..."
 
-for command in git bash shellcheck shfmt eza
-do
-    if command -v "${command}" >/dev/null 2>&1
-    then
+for command in git bash shellcheck shfmt eza; do
+    if command -v "${command}" >/dev/null 2>&1; then
         log_pass "${command} installed"
     else
         log_fail "${command} missing"
@@ -70,10 +66,8 @@ for utility in \
     backup.sh \
     bootstrap.sh \
     check-project.sh \
-    shell-quality.sh
-do
-    if file_exists "${SCRIPT_DIR}/${utility}"
-    then
+    shell-quality.sh; do
+    if file_exists "${SCRIPT_DIR}/${utility}"; then
         log_pass "${utility}"
     else
         log_fail "${utility}"

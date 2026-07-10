@@ -1,0 +1,5 @@
+# Look for sourced files relative to the script being checked
+source-path=SCRIPTDIR
+
+# Allow ShellCheck to follow sourced project files
+external-sources=true
