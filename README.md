@@ -135,15 +135,27 @@ workstation-framework/
 │   ├── PROJECT_ROADMAP.md
 │   └── SHELL_CODING_STANDARDS.md
 ├── scripts/
+│   ├── lib/
+│   │   ├── checks.sh
+│   │   ├── colors.sh
+│   │   ├── filesystem.sh
+│   │   └── logging.sh
 │   ├── backup.sh
 │   ├── bootstrap.sh
 │   ├── check-project.sh
+│   ├── clean.sh
+│   ├── doctor.sh
+│   ├── install.sh
+│   ├── restore.sh
 │   ├── shell-quality.sh
-│   └── lib/
+│   ├── sync.sh
+│   ├── uninstall.sh
+│   └── update.sh
 ├── templates/
 ├── tests/
 ├── .editorconfig
 ├── .gitignore
+├── .shellcheckrc
 ├── LICENSE
 └── README.md
 ```
@@ -185,10 +197,17 @@ Run the bootstrap utility:
 
 | Script | Purpose |
 |---------|---------|
-| `check-project.sh` | Verify the repository structure. |
-| `shell-quality.sh` | Run Bash syntax, ShellCheck, and formatting validation. |
-| `backup.sh` | Create timestamped backups of configuration files. |
-| `bootstrap.sh` | Install and initialize framework utilities. |
+| backup.sh | Create timestamped backups of configuration files. |
+| bootstrap.sh | Prepare the framework environment. |
+| check-project.sh | Verify the repository structure and required files. |
+| clean.sh | Remove temporary development artifacts safely. |
+| doctor.sh | Perform workstation and framework health checks. |
+| install.sh | Install framework utilities into the local environment. |
+| restore.sh | Restore the latest configuration backup. |
+| shell-quality.sh | Run Bash syntax, ShellCheck, and formatting validation. |
+| sync.sh | Check Git repository synchronization with the remote. |
+| uninstall.sh | Remove installed framework utilities. |
+| update.sh | Update the framework and verify its installation. |
 
 ---
 
@@ -226,14 +245,22 @@ All shell scripts are verified using:
 
 ### Version 2.0
 
-Planned enhancements include:
+Completed:
 
-- Additional workstation utilities
-- Improved shell-quality reporting
-- Enhanced filesystem helpers
-- Richer logging
-- Unit tests
-- Additional automation
+- Framework installer
+- Framework updater
+- Framework uninstaller
+- Workstation doctor
+- Repository synchronization utility
+- Cleanup utility
+- Configuration restore utility
+
+Planned:
+
+- GitHub Actions
+- Automated quality checks
+- Basic test suite
+- Release workflow
 
 ---
 
