@@ -10,33 +10,27 @@ on:
       - main
 
 jobs:
-  shell-quality:
+  quality:
     name: Shell Quality Checks
-
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install ShellCheck
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck
-
-      - name: Install shfmt
-        run: |
-          sudo snap install shfmt
+          sudo apt-get install -y shellcheck shfmt
 
       - name: Verify Bash syntax
         run: |
-          find scripts -type f -name "*.sh" \
-            -exec bash -n {} \;
+          find scripts -type f -name "*.sh" -exec bash -n {} +
 
       - name: Run ShellCheck
         run: |
-          shellcheck -x $(find scripts -type f -name "*.sh")
+          find scripts -type f -name "*.sh" -exec shellcheck -x {} +
 
-      - name: Check formatting
+      - name: Verify formatting
         run: |
-          shfmt -d scripts
+          find scripts -type f -name "*.sh" -exec shfmt -d {} +
