@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt
+          sudo apt-get install -y shellcheck shfmt bats
 
       - name: Verify Bash syntax
         run: |
@@ -37,3 +37,7 @@ jobs:
       - name: Verify shell formatting
         run: |
           find scripts -type f -name "*.sh" -exec shfmt -d {} +
+
+      - name: Run Bats tests
+        run: |
+          bats tests
