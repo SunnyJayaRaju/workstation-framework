@@ -1,0 +1,14 @@
+# Default code owner
+* @SunnyJayaRaju
+
+# GitHub configuration
+.github/ @SunnyJayaRaju
+
+# Documentation
+docs/ @SunnyJayaRaju
+
+# Shell scripts
+scripts/ @SunnyJayaRaju
+
+# Tests
+tests/ @SunnyJayaRaju
