@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ###############################################################################
 # Script: bootstrap.sh
 # Version: 1.1.0
@@ -8,12 +10,15 @@
 #   Install Developer Workstation Framework utilities.
 ###############################################################################
 
-set -euo pipefail
-
-readonly LOCAL_BIN="$HOME/.local/bin"
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
+
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
+
+load_config
+
+readonly LOCAL_BIN="$INSTALL_DIR"
 
 echo
 echo "========================================="

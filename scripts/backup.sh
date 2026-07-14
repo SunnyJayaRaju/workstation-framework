@@ -28,7 +28,15 @@
 
 set -euo pipefail
 
-readonly BACKUP_DIR="$HOME/.local/backups"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
+
+load_config
+
+readonly BACKUP_DIR
 
 mkdir -p "$BACKUP_DIR"
 

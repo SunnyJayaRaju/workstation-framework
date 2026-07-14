@@ -13,7 +13,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
-BACKUP_DIR="${HOME}/.local/backups"
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
+
+load_config
+
+: "${BACKUP_DIR:?BACKUP_DIR is not configured}"
+
 readonly BACKUP_DIR
 
 SOURCE="${HOME}/.zshrc"

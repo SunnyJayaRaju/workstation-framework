@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ###############################################################################
 # Script: install.sh
 # Version: 2.0.0
@@ -8,12 +10,14 @@
 #   Install Developer Workstation Framework utilities into ~/.local/bin.
 ###############################################################################
 
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
-INSTALL_DIR="${HOME}/.local/bin"
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
+
+load_config
+
 readonly INSTALL_DIR
 
 # shellcheck source-path=SCRIPTDIR/lib
