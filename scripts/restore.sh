@@ -2,10 +2,10 @@
 
 ###############################################################################
 # Script: restore.sh
-# Version: 2.0.0
+# Version: 2.1.0
 #
 # Purpose:
-#   Restore the most recent .zshrc backup created by backup.sh.
+#   Restore the latest ~/.zshrc backup.
 ###############################################################################
 
 set -euo pipefail
@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
 # shellcheck source=lib/config.sh
-source "$SCRIPT_DIR/lib/config.sh"
+source "${SCRIPT_DIR}/lib/config.sh"
 
 load_config
 
@@ -26,12 +26,10 @@ SOURCE="${HOME}/.zshrc"
 readonly SOURCE
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 restore_latest_backup() {
+
     local latest_backup
 
     latest_backup="$(
@@ -41,34 +39,36 @@ restore_latest_backup() {
             -name 'zshrc_*' \
             -print0 |
             xargs -0 ls -t 2>/dev/null |
-            head -n 1
+            head -n1
     )"
 
     if [[ -z "${latest_backup}" ]]; then
-        log_fail "No backups found."
+        log_fail "No backup found."
         exit 1
     fi
 
     cp -p "${latest_backup}" "${SOURCE}"
 
-    log_pass "Restored:"
+    log_pass "Restored from"
+
     echo "  ${latest_backup}"
 }
 
 main() {
+
     echo
     echo "========================================="
     echo " Developer Workstation Restore"
     echo "========================================="
     echo
 
-    log_info "Looking for latest backup..."
+    log_info "Searching for latest backup..."
 
     restore_latest_backup
 
     echo
 
-    log_pass ".zshrc restored successfully."
+    log_pass "Restore completed successfully."
 }
 
 main "$@"
