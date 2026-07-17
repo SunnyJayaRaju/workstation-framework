@@ -66,7 +66,14 @@ for utility in \
     backup.sh \
     bootstrap.sh \
     check-project.sh \
-    shell-quality.sh; do
+    clean.sh \
+    doctor.sh \
+    install.sh \
+    restore.sh \
+    shell-quality.sh \
+    sync.sh \
+    uninstall.sh \
+    update.sh; do
     if file_exists "${SCRIPT_DIR}/${utility}"; then
         log_pass "${utility}"
     else
