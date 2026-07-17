@@ -20,12 +20,20 @@ source "${SCRIPT_DIR}/lib/colors.sh"
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/filesystem.sh"
+
 main() {
     echo
     echo "========================================="
     echo " Developer Workstation Sync"
     echo "========================================="
     echo
+
+    if ! command -v git >/dev/null 2>&1; then
+        log_fail "Git is not installed."
+        exit 1
+    fi
 
     if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         log_fail "Current directory is not a Git repository."
