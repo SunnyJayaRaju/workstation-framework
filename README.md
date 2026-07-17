@@ -1,145 +1,214 @@
 # Developer Workstation Framework
 
-> An engineering-first framework for building, maintaining, and evolving a professional macOS developer workstation.
+> An engineering-first framework for building, managing, validating, and evolving a professional macOS development workstation using modern Bash engineering practices.
 
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Why This Project?](#why-this-project)
-- [Design Philosophy](#design-philosophy)
-- [Key Features](#key-features)
-- [Technology Stack](#technology-stack)
-- [Release Status](#release-status)
-- [Repository Structure](#repository-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Available Utilities](#available-utilities)
-- [Development Standards](#development-standards)
-- [Roadmap](#roadmap)
-- [Project Status](#project-status)
-- [License](#license)
+![Platform](https://img.shields.io/badge/platform-macOS-black?logo=apple)
+![Shell](https://img.shields.io/badge/shell-Bash-4EAA25?logo=gnu-bash)
+![CI](https://img.shields.io/github/actions/workflow/status/SunnyJayaRaju/workstation-framework/quality.yml?branch=main&label=CI)
+![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
+![Version](https://img.shields.io/badge/version-v1.0.0-blue)
 
 ---
 
 ## Overview
 
-Developer Workstation Framework is a structured, Git-based project for managing a development environment using software engineering principles rather than ad-hoc scripts.
+Developer Workstation Framework is a structured, engineering-focused toolkit for building and maintaining a reproducible macOS development environment.
 
-The framework combines reusable shell libraries, automation utilities, documentation, coding standards, and quality validation into a maintainable and version-controlled repository.
+Rather than collecting standalone shell scripts over time, this project treats workstation management as a software engineering discipline. Every utility follows common coding standards, centralized configuration, reusable libraries, automated validation, behavioral testing, and continuous integration.
 
-Rather than collecting unrelated scripts, every component is designed to be documented, tested, reviewed, and improved over time.
-
----
-
-## Why This Project?
-
-Setting up a development workstation often becomes difficult to maintain because scripts are scattered across directories, documentation becomes outdated, and manual changes are hard to reproduce.
-
-This framework addresses those problems by treating workstation configuration as an engineering project.
-
-Core objectives include:
-
-- Build a reproducible development environment.
-- Promote consistent shell scripting practices.
-- Maintain high documentation standards.
-- Encourage reusable utilities instead of one-off scripts.
-- Version-control infrastructure and tooling.
-- Continuously improve through structured releases.
+The result is a framework that is easier to understand, extend, maintain, and confidently evolve over time.
 
 ---
 
-## Design Philosophy
+# Why This Project?
 
-The framework is built around a simple engineering philosophy:
+Most workstation setup repositories eventually become difficult to maintain because they evolve organically:
 
-- Build reusable components.
-- Validate every change.
-- Document every decision.
-- Keep infrastructure under version control.
-- Improve through incremental releases.
+- Scripts become duplicated.
+- Configuration is scattered.
+- Documentation falls behind implementation.
+- Validation becomes manual.
+- Small changes introduce regressions.
 
-Rather than collecting unrelated scripts, the project treats workstation management as a software engineering discipline.
+Developer Workstation Framework addresses these problems by organizing workstation automation into a maintainable engineering project with clearly separated responsibilities.
+
+Instead of treating infrastructure as a collection of scripts, the repository treats it as software.
 
 ---
 
-## Key Features
+# Design Philosophy
 
-### Engineering Practices
+The framework is guided by several engineering principles.
 
-- Version-controlled repository
-- Structured project documentation
-- Consistent shell scripting standards
-- Git-based development workflow
-- Code quality verification
+## Reusability
 
-### Reusable Libraries
+Common functionality belongs in shared libraries instead of being duplicated across utilities.
 
-- Logging helpers
-- Filesystem helpers
+## Simplicity
+
+Each script should perform one responsibility well.
+
+## Maintainability
+
+Readable code is preferred over clever code.
+
+## Automation
+
+Quality verification should be automated whenever possible.
+
+## Consistency
+
+Every utility follows the same project structure, coding standards, logging style, and validation process.
+
+## Reliability
+
+Configuration, testing, and validation should produce deterministic results both locally and in continuous integration environments.
+
+---
+
+# Key Features
+
+## Modular Bash Architecture
+
+Shared libraries eliminate duplicated logic and provide reusable functionality for:
+
+- Logging
+- Configuration loading
+- Filesystem operations
 - Validation helpers
-- ANSI color definitions
+- ANSI color handling
 
-### Utilities
+---
 
-- Project verification
-- Shell quality validation
-- Workstation bootstrap
+## Centralized Configuration
+
+Configuration is managed through dedicated configuration files with predictable precedence.
+
+Priority order:
+
+1. Environment variables
+2. `config/user.conf`
+3. `config/default.conf`
+
+This allows local customization without modifying repository defaults while remaining friendly to CI pipelines.
+
+---
+
+## Built-in Utilities
+
+The framework includes utilities for:
+
+- Bootstrapping a workstation
+- Installing framework utilities
+- Updating installations
+- Removing installations
+- Repository synchronization
 - Configuration backup
+- Configuration restore
+- Repository verification
+- Framework diagnostics
+- Cleanup
+- Shell quality validation
 
 ---
 
-## Technology Stack
+## Quality Assurance
 
-- macOS
-- Bash
-- Git
-- GitHub
-- Markdown
-- Visual Studio Code
-- ShellCheck
-- shfmt
+Every change is verified using:
 
----
-
-## Release Status
-
-**Current Version:** 1.0.0 (Release Candidate)
-
-Completed:
-- Repository foundation
-- Documentation framework
-- Core shell libraries
-- Utility scripts
-- Bootstrap workflow
-- Git history
-
-Remaining before Version 1.0:
-
-- GitHub repository publication
-- GitHub Actions
-- Initial public release (v1.0.0)
+- Bash syntax validation
+- ShellCheck static analysis
+- shfmt formatting verification
+- Automated Bats behavioral tests
+- GitHub Actions Continuous Integration
 
 ---
 
-## Repository Structure
+## Documentation-Driven Development
+
+Documentation is treated as part of the codebase.
+
+The repository includes:
+
+- Architecture documentation
+- Coding standards
+- Review checklist
+- Roadmap
+- AI handover documentation
+- Project knowledge base
+- Changelog
+
+---
+
+## Engineering Workflow
+
+Development follows a consistent lifecycle:
+
+```text
+Design
+    ↓
+Implement
+    ↓
+Validate
+    ↓
+Test
+    ↓
+Review
+    ↓
+Release
+```
+
+---
+
+# Technology Stack
+
+| Category | Technology |
+|-----------|------------|
+| Operating System | macOS |
+| Shell | Bash |
+| Version Control | Git |
+| Repository Hosting | GitHub |
+| CI/CD | GitHub Actions |
+| Testing | Bats |
+| Static Analysis | ShellCheck |
+| Formatting | shfmt |
+| Editor | Visual Studio Code |
+| Documentation | Markdown |
+
+---
+
+# Current Release
+
+**Version:** **v1.0.0**
+
+### Highlights
+
+- Modular Bash architecture
+- Shared utility libraries
+- Centralized configuration management
+- Automated behavioral testing
+- Continuous Integration
+- Engineering documentation
+- Reusable workstation utilities
+- Production-ready project structure
+
+---
+
+# Repository Structure
 
 ```text
 workstation-framework/
-├── assets/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── CHANGELOG.md
-│   ├── CODE_REVIEW_CHECKLIST.md
-│   ├── PROJECT_ROADMAP.md
-│   └── SHELL_CODING_STANDARDS.md
+├── .github/                # GitHub workflows, templates, CODEOWNERS
+├── .vscode/                # Recommended VS Code configuration
+├── assets/                 # Project assets
+├── config/                 # Framework configuration
+│   ├── default.conf
+│   ├── example.conf
+│   └── user.conf
+├── docs/                   # Project documentation
+├── examples/               # Usage examples (future)
 ├── scripts/
-│   ├── lib/
-│   │   ├── checks.sh
-│   │   ├── colors.sh
-│   │   ├── filesystem.sh
-│   │   └── logging.sh
+│   ├── lib/                # Shared Bash libraries
 │   ├── backup.sh
 │   ├── bootstrap.sh
 │   ├── check-project.sh
@@ -151,133 +220,270 @@ workstation-framework/
 │   ├── sync.sh
 │   ├── uninstall.sh
 │   └── update.sh
-├── templates/
-├── tests/
-├── .editorconfig
-├── .gitignore
-├── .shellcheckrc
-├── LICENSE
-└── README.md
+├── templates/              # Script templates
+├── tests/                  # Automated Bats tests
+├── Makefile
+├── README.md
+└── LICENSE
 ```
+
+The repository is intentionally organized to separate framework logic, reusable libraries, configuration, documentation, testing, and project assets.
 
 ---
 
-## Prerequisites
+# Prerequisites
 
-The framework is currently designed for:
+Developer Workstation Framework currently targets macOS.
 
-- macOS
+Required tools:
+
 - Bash
 - Git
 - ShellCheck
 - shfmt
-- Visual Studio Code (recommended)
+- Bats (for development and testing)
+
+Recommended:
+
+- Visual Studio Code
+- Homebrew
 
 ---
 
-## Installation
+# Installation
 
 Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/SunnyJayaRaju/workstation-framework.git
 
 cd workstation-framework
 ```
 
-Run the bootstrap utility:
+Bootstrap the framework:
 
 ```bash
 ./scripts/bootstrap.sh
 ```
 
----
+Verify the installation:
 
-## Available Utilities
-
-| Script | Purpose |
-|---------|---------|
-| backup.sh | Create timestamped backups of configuration files. |
-| bootstrap.sh | Prepare the framework environment. |
-| check-project.sh | Verify the repository structure and required files. |
-| clean.sh | Remove temporary development artifacts safely. |
-| doctor.sh | Perform workstation and framework health checks. |
-| install.sh | Install framework utilities into the local environment. |
-| restore.sh | Restore the latest configuration backup. |
-| shell-quality.sh | Run Bash syntax, ShellCheck, and formatting validation. |
-| sync.sh | Check Git repository synchronization with the remote. |
-| uninstall.sh | Remove installed framework utilities. |
-| update.sh | Update the framework and verify its installation. |
+```bash
+./scripts/doctor.sh
+```
 
 ---
 
-## Development Standards
+# Configuration
 
-This project follows a structured engineering workflow.
+Framework configuration is stored in the `config/` directory.
 
-Every change is expected to follow this process:
+```
+config/
+├── default.conf
+├── example.conf
+└── user.conf
+```
 
-1. Design
-2. Implement
-3. Verify
-4. Commit
+Configuration precedence follows standard Unix conventions:
 
-All shell scripts are verified using:
+```text
+Environment Variables
+        │
+        ▼
+config/user.conf
+        │
+        ▼
+config/default.conf
+```
 
-- `bash -n`
-- `shellcheck`
-- `shfmt`
+This allows:
 
----
+- sensible project defaults
+- local machine customization
+- CI/CD overrides
+- temporary runtime overrides
 
-## Roadmap
+Example:
 
-### Version 1.0
+```bash
+BACKUP_DIR=/tmp/framework-backups ./scripts/backup.sh
+```
 
-- [x] Repository foundation
-- [x] Documentation framework
-- [x] Core shell libraries
-- [x] Project utilities
-- [x] Bootstrap installer
-- [ ] GitHub repository
-- [ ] GitHub Actions
-- [ ] Version 1.0 release
-
-### Version 2.0
-
-Completed:
-
-- Framework installer
-- Framework updater
-- Framework uninstaller
-- Workstation doctor
-- Repository synchronization utility
-- Cleanup utility
-- Configuration restore utility
-
-Planned:
-
-- GitHub Actions
-- Automated quality checks
-- Basic test suite
-- Release workflow
+No repository files need to be modified for temporary configuration changes.
 
 ---
 
-## Documentation
+# Available Utilities
 
-Additional project documentation is available in the `docs/` directory.
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Project Roadmap](docs/PROJECT_ROADMAP.md)
-- [Shell Coding Standards](docs/SHELL_CODING_STANDARDS.md)
-- [Code Review Checklist](docs/CODE_REVIEW_CHECKLIST.md)
-- [Changelog](docs/CHANGELOG.md)
+| Script | Description |
+|---------|-------------|
+| `backup.sh` | Create timestamped backups of supported configuration files. |
+| `bootstrap.sh` | Prepare the framework after cloning the repository. |
+| `check-project.sh` | Validate repository structure and required project files. |
+| `clean.sh` | Remove temporary development artifacts safely. |
+| `doctor.sh` | Diagnose framework and workstation health. |
+| `install.sh` | Install framework utilities into the local environment. |
+| `restore.sh` | Restore the most recent configuration backup. |
+| `shell-quality.sh` | Run Bash validation, ShellCheck, and formatting checks. |
+| `sync.sh` | Verify synchronization with the remote Git repository. |
+| `uninstall.sh` | Remove framework utilities from the local system. |
+| `update.sh` | Update an installed framework and perform validation. |
 
 ---
 
-## License
+# Development Workflow
+
+Every contribution should follow the same engineering workflow.
+
+```
+Plan
+ ↓
+Implement
+ ↓
+Validate
+ ↓
+Test
+ ↓
+Review
+ ↓
+Commit
+```
+
+The objective is to maintain a repository where every change is reproducible, reviewable, and well documented.
+
+---
+
+# Development Commands
+
+The project uses a Makefile to simplify routine tasks.
+
+| Command | Purpose |
+|----------|---------|
+| `make all` | Execute the complete quality gate. |
+| `make test` | Run the Bats test suite. |
+| `make lint` | Run ShellCheck validation. |
+| `make doctor` | Execute workstation diagnostics. |
+| `make check` | Verify repository structure. |
+
+Before every commit, run:
+
+```bash
+make all
+```
+
+---
+
+# Automated Testing
+
+Behavioral testing is implemented using Bats.
+
+Current coverage includes:
+
+- Backup
+- Restore
+- Bootstrap
+- Installation
+- Update
+- Uninstall
+- Doctor
+- Cleanup
+- Repository verification
+- Configuration
+- Shell quality
+- Repository synchronization
+
+Current status:
+
+- **24 automated tests**
+- **0 failures**
+
+---
+
+# Continuous Integration
+
+Every push and pull request automatically runs:
+
+- Bash syntax validation
+- ShellCheck
+- shfmt verification
+- Automated Bats tests
+
+This helps ensure that every change remains production ready.
+
+---
+
+# Documentation
+
+Detailed project documentation is available in the `docs/` directory.
+
+Included documentation:
+
+- Architecture
+- Changelog
+- Coding Standards
+- Code Review Checklist
+- Project Roadmap
+- AI Handover Guide
+- Project Knowledge
+
+---
+
+# Roadmap
+
+## Version 1.x
+
+Future enhancements may include:
+
+- Additional workstation automation
+- Expanded backup support
+- Cross-platform compatibility
+- Enhanced diagnostics
+- More behavioral tests
+- Plugin-style utility extensions
+
+The project will continue to prioritize maintainability, modularity, and engineering quality over rapid feature growth.
+
+---
+
+# Contributing
+
+Contributions are welcome.
+
+Please review:
+
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+
+Before submitting a Pull Request, ensure:
+
+```bash
+make all
+```
+
+passes successfully.
+
+---
+
+# License
 
 This project is licensed under the MIT License.
 
-See the [LICENSE](LICENSE) file for details.
+See the `LICENSE` file for details.
+
+---
+
+# Acknowledgements
+
+Developer Workstation Framework was built with a strong emphasis on software engineering principles rather than simple shell scripting.
+
+The project focuses on:
+
+- Clean architecture
+- Maintainable Bash code
+- Reusable libraries
+- Automated quality validation
+- Documentation-first development
+- Continuous improvement
+
+If you find the project useful, consider starring the repository and sharing feedback through GitHub Issues or Pull Requests.

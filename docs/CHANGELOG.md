@@ -2,85 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+The format is based on [Keep a Changelog](https://keepachangelog.com/) and follows Semantic Versioning.
 
 ---
 
-## [Unreleased]
-
-### Planned
-
-- GitHub Actions continuous integration
-- Automated quality checks
-- Basic test suite
-- Version 1.0.0 release
-- GitHub release notes
-
----
-
-## [1.0.0-rc]
+## [1.0.0] - 2026-07-17
 
 ### Added
 
-#### Repository Foundation
+- Initial Developer Workstation Framework project structure.
+- Modular Bash utility architecture.
+- Shared libraries for logging, validation, configuration, filesystem operations, and ANSI colors.
+- Centralized configuration system with default, user, and environment variable support.
+- Bootstrap, installation, update, uninstall, cleanup, synchronization, doctor, backup, restore, project verification, and shell quality utilities.
+- GitHub Actions workflow for continuous integration.
+- Automated Bats behavioral test suite.
+- Project documentation covering architecture, roadmap, coding standards, review checklist, AI handover, and project knowledge.
+- VS Code workspace recommendations.
+- Project templates for future utility development.
 
-- Initial Git repository
-- Standard project directory structure
-- Git ignore rules
-- EditorConfig
-- Visual Studio Code workspace support
-- MIT License
+### Changed
 
-#### Documentation
+- Refactored utilities to reuse shared libraries.
+- Standardized logging and validation across all scripts.
+- Improved installer architecture and maintainability.
+- Unified configuration loading throughout the framework.
+- Improved backup and restore reliability.
+- Updated README with complete project documentation.
+- Improved repository organization and engineering consistency.
 
-- Comprehensive README
-- Architecture documentation
-- Project roadmap
-- Shell coding standards
-- Code review checklist
-- Changelog
+### Fixed
 
-#### Shell Libraries
-
-- `logging.sh`
-- `checks.sh`
-- `filesystem.sh`
-- `colors.sh`
-
-#### Framework Utilities
-
-- `backup.sh`
-- `bootstrap.sh`
-- `check-project.sh`
-- `clean.sh`
-- `doctor.sh`
-- `install.sh`
-- `restore.sh`
-- `shell-quality.sh`
-- `sync.sh`
-- `uninstall.sh`
-- `update.sh`
-
-#### Quality
-
-- Bash syntax validation
-- ShellCheck integration
-- shfmt formatting verification
-- Project ShellCheck configuration (`.shellcheckrc`)
-
-#### Repository
-
-- Initial GitHub publication
-- Structured commit history
-- Version-controlled development workflow
+- Configuration precedence now correctly honors environment variables.
+- Backup and restore workflows are fully testable.
+- CI failures caused by configuration overrides.
+- Shell formatting inconsistencies.
+- Minor documentation inconsistencies discovered during repository audit.
 
 ---
 
-## [0.1.0] - Initial Foundation
+## Future Releases
 
-### Added
-
-- Repository initialization
-- Initial documentation
-- Initial project structure
-- First Git commit
+Future releases will continue to follow Semantic Versioning and Keep a Changelog conventions.
