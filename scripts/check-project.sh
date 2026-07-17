@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Script: check-project.sh
-# Version: 1.0.0
+# Version: 2.0.0
 #
 # Purpose:
 #   Verify the structure and quality of the
@@ -18,26 +18,20 @@
 
 set -euo pipefail
 
-# shellcheck disable=SC1091
-source "$(dirname "$0")/lib/logging.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/logging.sh"
+
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/checks.sh"
 
 echo "=========================================="
 echo " Developer Workstation Framework"
 echo " Project Quality Check"
 echo "=========================================="
 echo
-
-check_exists() {
-    local PATH_TO_CHECK="$1"
-    local DESCRIPTION="$2"
-
-    if [[ -e "$PATH_TO_CHECK" ]]; then
-        log_pass "$DESCRIPTION"
-    else
-        log_fail "$DESCRIPTION"
-        exit 1
-    fi
-}
 
 check_exists ".git" "Git repository"
 check_exists "README.md" "README"
@@ -52,6 +46,6 @@ check_exists "tests" "Tests directory"
 check_exists "assets" "Assets directory"
 
 echo
-echo "Repository structure verified."
+log_pass "Repository structure verified."
 
 exit 0
