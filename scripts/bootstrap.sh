@@ -30,13 +30,16 @@ mkdir -p "$LOCAL_BIN"
 
 echo "Installing utilities..."
 
-cp -p "$SCRIPT_DIR/backup.sh" "$LOCAL_BIN/backup.sh"
+for utility in \
+    backup.sh \
+    doctor.sh \
+    shell-quality.sh; do
 
-cp -p "$SCRIPT_DIR/shell-quality.sh" "$LOCAL_BIN/shell-quality.sh"
+    cp -p "${SCRIPT_DIR}/${utility}" "${LOCAL_BIN}/${utility}"
 
-echo "✓ backup.sh installed"
+    echo "✓ ${utility} installed"
 
-echo "✓ shell-quality.sh installed"
+done
 
 echo
 
