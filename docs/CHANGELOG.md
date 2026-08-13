@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed installer to include library directory when installing framework utilities
+- Fixed uninstaller to remove library directory on cleanup
+- Added fallback configuration support for system-wide installed scripts
+- Scripts now work correctly when installed to ~/.local/bin without config directory
+
+---
+
 ## [1.0.0] - 2026-07-17
 
 ### Added
