@@ -44,6 +44,25 @@ readonly UTILITIES=(
     update.sh
 )
 
+install_lib_directory() {
+    local lib_source="${SCRIPT_DIR}/lib"
+    local lib_target="${INSTALL_DIR}/lib"
+
+    if [[ ! -d "$lib_source" ]]; then
+        log_fail "Library directory not found: ${lib_source}"
+        exit 1
+    fi
+
+    ensure_directory "${lib_target}"
+
+    if cp -Rp "${lib_source}"/* "${lib_target}/"; then
+        log_pass "Library directory installed"
+    else
+        log_fail "Failed to install library directory"
+        exit 1
+    fi
+}
+
 install_utility() {
     local utility="$1"
 
@@ -79,6 +98,12 @@ main() {
     log_info "Preparing installation..."
 
     ensure_directory "${INSTALL_DIR}"
+
+    echo
+
+    log_info "Installing library directory..."
+
+    install_lib_directory
 
     echo
 

@@ -34,6 +34,17 @@ remove_utility() {
     fi
 }
 
+remove_lib_directory() {
+    local lib_target="${INSTALL_DIR}/lib"
+
+    if [[ -d "$lib_target" ]]; then
+        rm -rf "${lib_target}"
+        log_pass "Library directory removed"
+    else
+        log_info "Library directory not installed"
+    fi
+}
+
 main() {
     echo
     echo "========================================="
@@ -44,8 +55,21 @@ main() {
     log_info "Removing installed framework utilities..."
 
     remove_utility "backup.sh"
+    remove_utility "bootstrap.sh"
+    remove_utility "check-project.sh"
+    remove_utility "clean.sh"
     remove_utility "doctor.sh"
+    remove_utility "restore.sh"
     remove_utility "shell-quality.sh"
+    remove_utility "sync.sh"
+    remove_utility "uninstall.sh"
+    remove_utility "update.sh"
+
+    echo
+
+    log_info "Removing library directory..."
+
+    remove_lib_directory
 
     echo
     log_pass "Framework utilities removed successfully."
