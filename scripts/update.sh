@@ -27,9 +27,15 @@ main() {
     echo "========================================="
     echo
 
-    log_info "Updating repository..."
+    # git pull requires an attached branch; skip gracefully on detached HEAD
+    # (typical in CI checkouts) — install + doctor below still run fully.
+    if [[ -n "$(git branch --show-current)" ]]; then
+        log_info "Updating repository..."
 
-    git pull --ff-only
+        git pull --ff-only
+    else
+        log_info "Detached HEAD detected — skipping repository pull."
+    fi
 
     echo
 

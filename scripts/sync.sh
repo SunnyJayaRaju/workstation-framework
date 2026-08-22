@@ -40,6 +40,22 @@ main() {
         exit 1
     fi
 
+    # CI checkouts (actions/checkout on pull_request events) run in a
+    # detached-HEAD state where branch/upstream comparisons are impossible.
+    # Report the commit and finish cleanly instead of failing.
+    local branch
+    branch="$(git branch --show-current)"
+
+    if [[ -z "${branch}" ]]; then
+        local detached_sha
+        detached_sha="$(git rev-parse --short HEAD)"
+        log_info "Detached HEAD detected (typical in CI environments)."
+        echo "Checked-out commit: ${detached_sha}"
+        echo
+        log_pass "Synchronization check completed."
+        return 0
+    fi
+
     log_info "Fetching latest remote information..."
 
     git fetch --prune origin
