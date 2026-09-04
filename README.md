@@ -5,6 +5,8 @@
 ![Platform](https://img.shields.io/badge/platform-macOS-black?logo=apple)
 ![Shell](https://img.shields.io/badge/shell-Bash-4EAA25?logo=gnu-bash)
 ![CI](https://img.shields.io/github/actions/workflow/status/SunnyJayaRaju/workstation-framework/quality.yml?branch=main&label=CI)
+![ShellCheck](https://img.shields.io/badge/ShellCheck-passing-4EAA25?logo=shellcheck&logoColor=white)
+![Bats](https://img.shields.io/badge/Bats-24%20tests%20passing-4EAA25?logo=bats&logoColor=white)
 ![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
 ![Version](https://img.shields.io/badge/version-v1.0.0-blue)
 
