@@ -87,9 +87,17 @@ restore_latest_backup() {
 
     local latest_backup=""
 
-    # Use ls -t to get the latest file by modification time
-    # shellcheck disable=SC2012
-    latest_backup=$(ls -t "${backup_dir}/${basename}_"* 2>/dev/null | head -n1)
+    # Find the latest backup by modification time (portable)
+    # Use stat to get modification time, sort numerically, get newest
+    local files
+    files=("${backup_dir}/${basename}_"*)
+    if [[ ${#files[@]} -eq 1 && ! -e "${files[0]}" ]]; then
+        # Nullglob case - no matches
+        files=()
+    fi
+    if [[ ${#files[@]} -gt 0 ]]; then
+        latest_backup=$(stat -f "%m %N" "${files[@]}" 2>/dev/null | sort -rn | head -n1 | cut -d' ' -f2-)
+    fi
 
     if [[ -z "$latest_backup" ]]; then
         log_fail "No backup found for: ${source}"
