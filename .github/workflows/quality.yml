@@ -33,16 +33,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Make scripts executable
+      - name: Make scripts executable and remove macOS quarantine
         run: |
           chmod +x scripts/*.sh scripts/lib/*.sh
           ls -la scripts/*.sh scripts/lib/*.sh
-
-      - name: Remove quarantine attribute (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          xattr -d com.apple.quarantine scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
-          xattr -d com.apple.quarantine scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            xattr -cr scripts/ scripts/lib/ 2>/dev/null || true
+            xattr -l scripts/repo-clean.sh 2>/dev/null || true
+          fi
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
