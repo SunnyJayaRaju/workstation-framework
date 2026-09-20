@@ -154,7 +154,7 @@ teardown() {
     touch "$project_root/test_cleanup~"
 
     # Run repo-clean.sh --dry-run
-    run ./scripts/repo-clean.sh --dry-run
+    run bash scripts/repo-clean.sh --dry-run
     [ "$status" -eq 0 ]
 
     # Files should still exist after dry-run

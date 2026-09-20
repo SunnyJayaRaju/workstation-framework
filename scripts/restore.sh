@@ -89,6 +89,14 @@ restore_latest_backup() {
     local latest_mtime=0
     local file mtime
 
+    # Enable nullglob to prevent literal pattern when no matches
+    local shopt_nullglob_was_set=0
+    if shopt -q nullglob; then
+        shopt_nullglob_was_set=1
+    else
+        shopt -s nullglob
+    fi
+
     for file in "${backup_dir}/${basename}_"*; do
         [[ -f "$file" ]] || continue
         mtime=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null || echo 0)
@@ -97,6 +105,11 @@ restore_latest_backup() {
             latest_backup=$file
         fi
     done
+
+    # Restore nullglob state
+    if [[ $shopt_nullglob_was_set -eq 0 ]]; then
+        shopt -u nullglob
+    fi
 
     if [[ -z "$latest_backup" ]]; then
         log_fail "No backup found for: ${source}"
