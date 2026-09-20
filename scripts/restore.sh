@@ -88,7 +88,8 @@ restore_latest_backup() {
     local latest_backup=""
 
     # Find the latest backup by modification time (portable)
-    # Use stat to get modification time, sort numerically, get newest
+    # Use ls -t which works on both macOS and Linux
+    # shellcheck disable=SC2012
     local files
     files=("${backup_dir}/${basename}_"*)
     if [[ ${#files[@]} -eq 1 && ! -e "${files[0]}" ]]; then
@@ -96,7 +97,8 @@ restore_latest_backup() {
         files=()
     fi
     if [[ ${#files[@]} -gt 0 ]]; then
-        latest_backup=$(stat -f "%m %N" "${files[@]}" 2>/dev/null | sort -rn | head -n1 | cut -d' ' -f2-)
+        # shellcheck disable=SC2012
+        latest_backup=$(ls -t "${files[@]}" 2>/dev/null | head -n1)
     fi
 
     if [[ -z "$latest_backup" ]]; then
