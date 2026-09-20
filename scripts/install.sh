@@ -66,17 +66,17 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-        -h | --help)
-            usage
-            exit 0
-            ;;
-        -v | --version)
-            echo "install.sh 3.1.0"
-            exit 0
-            ;;
-        *)
-            die EX_USAGE "Unknown option: $1"
-            ;;
+            -h | --help)
+                usage
+                exit 0
+                ;;
+            -v | --version)
+                echo "install.sh 3.1.0"
+                exit 0
+                ;;
+            *)
+                die EX_USAGE "Unknown option: $1"
+                ;;
         esac
     done
 }

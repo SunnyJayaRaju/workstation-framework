@@ -83,3 +83,11 @@ jobs:
       - name: Run Bats tests
         run: |
           bats tests
+
+      - name: Run make check
+        run: |
+          make check
+
+      - name: Run make doctor
+        run: |
+          make doctor
