@@ -78,9 +78,13 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           echo "=== Final quarantine removal before tests ==="
-          xattr -cr scripts/ scripts/lib/ 2>/dev/null || true
-          xattr -l scripts/repo-clean.sh 2>/dev/null || echo "No extended attributes on repo-clean.sh"
-          xattr -l scripts/lib/logging.sh 2>/dev/null || echo "No extended attributes on logging.sh"
+          xattr -cr scripts/ scripts/lib/ 2>&1 || true
+          echo "--- xattr output for repo-clean.sh ---"
+          xattr -l scripts/repo-clean.sh 2>&1 || echo "No extended attributes on repo-clean.sh"
+          echo "--- xattr output for logging.sh ---"
+          xattr -l scripts/lib/logging.sh 2>&1 || echo "No extended attributes on logging.sh"
+          echo "--- testing direct bash execution ---"
+          bash scripts/repo-clean.sh 2>&1 || echo "Direct bash execution failed with exit code: $?"
 
       - name: Run Bats tests
         run: |
