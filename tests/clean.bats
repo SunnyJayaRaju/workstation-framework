@@ -7,6 +7,10 @@ setup() {
     REPO_CLEAN_TEMP_DIR="$(mktemp -d)"
     cp -R "${SCRIPTS_DIR}/." "${REPO_CLEAN_TEMP_DIR}/"
     chmod +x "${REPO_CLEAN_TEMP_DIR}/repo-clean.sh"
+    # Remove any macOS quarantine attributes recursively
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        xattr -cr "${REPO_CLEAN_TEMP_DIR}" 2>/dev/null || true
+    fi
 }
 
 teardown() {

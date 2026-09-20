@@ -160,6 +160,10 @@ teardown() {
     repo_clean_temp_dir="$(mktemp -d)"
     cp -R "${SCRIPTS_DIR}/." "${repo_clean_temp_dir}/"
     chmod +x "${repo_clean_temp_dir}/repo-clean.sh"
+    # Remove any macOS quarantine attributes
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        xattr -cr "${repo_clean_temp_dir}" 2>/dev/null || true
+    fi
 
     # Run repo-clean.sh --dry-run
     run bash "${repo_clean_temp_dir}/repo-clean.sh" --dry-run
