@@ -15,6 +15,6 @@ load test_helper
 
     load_config
 
-    [ "$INSTALL_DIR" = "$HOME/.local/bin" ]
-    [ "$BACKUP_DIR" = "$HOME/.workstation/backups" ]
+    [ "$INSTALL_DIR" = '$HOME/.local/bin' ]
+    [ "$BACKUP_DIR" = '$HOME/.workstation/backups' ]
 }
