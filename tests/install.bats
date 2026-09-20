@@ -2,14 +2,23 @@
 
 load test_helper
 
+setup() {
+    export INSTALL_DIR="$BATS_TEST_TMPDIR/install"
+    mkdir -p "$INSTALL_DIR"
+}
+
+teardown() {
+    rm -rf "$INSTALL_DIR"
+}
+
 @test "install.sh executes successfully" {
-    run bash "${SCRIPTS_DIR}/install.sh"
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
 
     [ "$status" -eq 0 ]
 }
 
 @test "install.sh prints completion message" {
-    run bash "${SCRIPTS_DIR}/install.sh"
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
 
     [[ "$output" == *"Installation completed successfully."* ]]
 }
