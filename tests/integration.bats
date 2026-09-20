@@ -158,10 +158,11 @@ teardown() {
     # Remove macOS quarantine attribute if present
     if [[ "$OSTYPE" == "darwin"* ]]; then
         xattr -d com.apple.quarantine "${SCRIPTS_DIR}/repo-clean.sh" 2>/dev/null || true
+        xattr -d com.apple.quarantine "$(dirname "${SCRIPTS_DIR}/repo-clean.sh")" 2>/dev/null || true
     fi
 
     # Run repo-clean.sh --dry-run
-    run bash "${SCRIPTS_DIR}/repo-clean.sh" --dry-run
+    run bash -c "source ${SCRIPTS_DIR}/repo-clean.sh --dry-run"
     [ "$status" -eq 0 ]
 
     # Files should still exist after dry-run
