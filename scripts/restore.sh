@@ -88,16 +88,16 @@ restore_latest_backup() {
     local latest_backup=""
     local latest_mtime=0
 
-    # Use find instead of glob for better portability and dotfile handling
-    while IFS= read -r -d '' file; do
+    # Use find with while loop for better portability
+    local file mtime
+    while IFS= read -r file; do
         [[ -f "$file" ]] || continue
-        local mtime
         mtime=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null || echo 0)
         if [[ "$mtime" -gt "$latest_mtime" ]]; then
             latest_mtime=$mtime
             latest_backup=$file
         fi
-    done < <(find "$backup_dir" -maxdepth 1 -type f -name "${basename}_*" -print0 2>/dev/null)
+    done < <(find "$backup_dir" -maxdepth 1 -type f -name "${basename}_*" 2>/dev/null)
 
     if [[ -z "$latest_backup" ]]; then
         log_fail "No backup found for: ${source}"
