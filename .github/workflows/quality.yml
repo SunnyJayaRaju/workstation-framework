@@ -42,6 +42,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           xattr -d com.apple.quarantine scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
+          xattr -d com.apple.quarantine scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
