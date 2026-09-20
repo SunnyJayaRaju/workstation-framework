@@ -29,6 +29,15 @@ source "${LIB_DIR}/checks.sh"
 # shellcheck source-path=SCRIPTDIR/lib
 source "${LIB_DIR}/filesystem.sh"
 
+# Failure counter
+FAILURES=0
+
+# Wrapper for log_fail that increments failure counter
+log_fail_tracked() {
+    log_fail "$1"
+    ((FAILURES++))
+}
+
 usage() {
     cat <<EOF
 Usage: $0 [OPTIONS]
@@ -86,7 +95,7 @@ check_utilities() {
         if file_exists "${base_dir}/${utility}"; then
             log_pass "${utility}"
         else
-            log_fail "${utility}"
+            log_fail_tracked "${utility}"
         fi
     done
 
@@ -94,7 +103,7 @@ check_utilities() {
     if directory_exists "${base_dir}/lib"; then
         log_pass "lib/ directory"
     else
-        log_fail "lib/ directory"
+        log_fail_tracked "lib/ directory"
     fi
 
     # If checking installed, also verify they execute without error
@@ -116,10 +125,10 @@ check_utilities() {
                 if "${base_dir}/${utility}" --version >/dev/null 2>&1; then
                     log_pass "${utility} executes"
                 else
-                    log_fail "${utility} execution failed"
+                    log_fail_tracked "${utility} execution failed"
                 fi
             else
-                log_fail "${utility} not executable"
+                log_fail_tracked "${utility} not executable"
             fi
         done
     fi
@@ -139,13 +148,13 @@ main() {
     if directory_exists "${SCRIPT_DIR}/lib"; then
         log_pass "scripts/lib found"
     else
-        log_fail "scripts/lib missing"
+        log_fail_tracked "scripts/lib missing"
     fi
 
     if directory_exists "${SCRIPT_DIR}"; then
         log_pass "scripts directory found"
     else
-        log_fail "scripts directory missing"
+        log_fail_tracked "scripts directory missing"
     fi
 
     echo
@@ -156,7 +165,7 @@ main() {
         if command -v "${command}" >/dev/null 2>&1; then
             log_pass "${command} installed"
         else
-            log_fail "${command} missing"
+            log_fail_tracked "${command} missing"
         fi
     done
 
@@ -180,6 +189,10 @@ main() {
 
     echo
     echo "Doctor completed."
+
+    if [[ ${FAILURES} -gt 0 ]]; then
+        exit 1
+    fi
 }
 
 main "$@"

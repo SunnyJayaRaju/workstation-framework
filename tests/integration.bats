@@ -115,12 +115,12 @@ teardown() {
     [[ "$output" == *"Framework updated successfully."* ]]
 }
 
-@test "doctor.sh detects missing dependencies" {
-    # Test with a fake missing command by temporarily hiding git
+@test "doctor.sh detects missing dependencies and exits non-zero" {
+    # Test with a fake missing command by temporarily hiding shellcheck
     PATH="/usr/bin:/bin" run bash "${SCRIPTS_DIR}/doctor.sh"
-    # Should still run but report missing git
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"git missing"* ]] || [[ "$output" == *"git installed"* ]]
+    # Should report missing shellcheck and exit non-zero
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"shellcheck missing"* ]]
 }
 
 @test "shell-quality.sh returns non-zero for script with syntax error" {
