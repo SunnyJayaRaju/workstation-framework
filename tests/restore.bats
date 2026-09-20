@@ -3,7 +3,6 @@
 setup() {
     export HOME="$BATS_TEST_TMPDIR/home"
     export BACKUP_DIR="$BATS_TEST_TMPDIR/backups"
-    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 
     mkdir -p "$HOME"
     mkdir -p "$BACKUP_DIR"
@@ -26,13 +25,13 @@ teardown() {
 }
 
 @test "restore.sh executes successfully" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "$PROJECT_ROOT/scripts/restore.sh"
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/restore.sh
 
     [ "$status" -eq 0 ]
 }
 
 @test "restore.sh restores latest backup for all sources" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "$PROJECT_ROOT/scripts/restore.sh"
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/restore.sh
 
     [ "$status" -eq 0 ]
 
@@ -46,7 +45,7 @@ teardown() {
 }
 
 @test "restore.sh prints completion message" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash "$PROJECT_ROOT/scripts/restore.sh"
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash scripts/restore.sh
 
     [[ "$output" == *"Restore completed successfully."* ]]
 }
