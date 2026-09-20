@@ -3,19 +3,22 @@
 load test_helper
 
 setup() {
-    # Remove macOS quarantine attribute from repo-clean.sh if present
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        xattr -d com.apple.quarantine "${SCRIPTS_DIR}/repo-clean.sh" 2>/dev/null || true
-        xattr -d com.apple.quarantine "$(dirname "${SCRIPTS_DIR}/repo-clean.sh")" 2>/dev/null || true
-    fi
+    # Copy repo-clean.sh and its dependencies to a temp location to avoid macOS quarantine
+    REPO_CLEAN_TEMP_DIR="$(mktemp -d)"
+    cp -R "${SCRIPTS_DIR}/." "${REPO_CLEAN_TEMP_DIR}/"
+    chmod +x "${REPO_CLEAN_TEMP_DIR}/repo-clean.sh"
+}
+
+teardown() {
+    [[ -n "${REPO_CLEAN_TEMP_DIR}" ]] && rm -rf "${REPO_CLEAN_TEMP_DIR}"
 }
 
 @test "repo-clean.sh executes successfully" {
-    run bash -c "source ${SCRIPTS_DIR}/repo-clean.sh"
+    run bash "${REPO_CLEAN_TEMP_DIR}/repo-clean.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "repo-clean.sh prints completion message" {
-    run bash -c "source ${SCRIPTS_DIR}/repo-clean.sh"
+    run bash "${REPO_CLEAN_TEMP_DIR}/repo-clean.sh"
     [[ "$output" == *"Cleanup completed successfully."* ]]
 }

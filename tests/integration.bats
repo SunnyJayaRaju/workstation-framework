@@ -155,14 +155,14 @@ teardown() {
     touch "$project_root/test_cleanup.orig"
     touch "$project_root/test_cleanup~"
 
-    # Remove macOS quarantine attribute if present
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        xattr -d com.apple.quarantine "${SCRIPTS_DIR}/repo-clean.sh" 2>/dev/null || true
-        xattr -d com.apple.quarantine "$(dirname "${SCRIPTS_DIR}/repo-clean.sh")" 2>/dev/null || true
-    fi
+    # Copy repo-clean.sh and its dependencies to a temp location to avoid macOS quarantine
+    local repo_clean_temp_dir
+    repo_clean_temp_dir="$(mktemp -d)"
+    cp -R "${SCRIPTS_DIR}/." "${repo_clean_temp_dir}/"
+    chmod +x "${repo_clean_temp_dir}/repo-clean.sh"
 
     # Run repo-clean.sh --dry-run
-    run bash -c "source ${SCRIPTS_DIR}/repo-clean.sh --dry-run"
+    run bash "${repo_clean_temp_dir}/repo-clean.sh" --dry-run
     [ "$status" -eq 0 ]
 
     # Files should still exist after dry-run
@@ -171,6 +171,7 @@ teardown() {
 
     # Clean up test files
     rm -f "$project_root/test_cleanup.orig" "$project_root/test_cleanup~"
+    rm -rf "${repo_clean_temp_dir}"
 }
 
 @test "bootstrap.sh delegates to install.sh" {
