@@ -87,25 +87,23 @@ restore_latest_backup() {
 
     local latest_backup=""
     local latest_mtime=0
+    local file mtime
 
-    # Find the latest backup file using pure Bash (no xargs/ls)
-    for file in "${backup_dir}"/"${basename}"_*; do
+    for file in "${backup_dir}/${basename}_"*; do
         [[ -f "$file" ]] || continue
-        local mtime
-        mtime=$(stat -f "%m" "$file" 2>/dev/null || stat -c "%Y" "$file" 2>/dev/null || echo 0)
-        if [[ $mtime -gt $latest_mtime ]]; then
+        mtime=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null || echo 0)
+        if [[ "$mtime" -gt "$latest_mtime" ]]; then
             latest_mtime=$mtime
             latest_backup=$file
         fi
     done
 
-    if [[ -z "${latest_backup}" ]]; then
+    if [[ -z "$latest_backup" ]]; then
         log_fail "No backup found for: ${source}"
         return 1
     fi
 
-    cp -p "${latest_backup}" "${source}"
-
+    cp -p "$latest_backup" "$source"
     log_pass "Restored ${source} from ${latest_backup}"
 }
 

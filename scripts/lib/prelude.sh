@@ -22,6 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
 # Core libraries (load in dependency order)
+# These are sibling files in the same directory
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/colors.sh"
 
@@ -37,7 +38,7 @@ source "${SCRIPT_DIR}/checks.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/errors.sh"
 
-# Config loader (requires filesystem.sh)
+# Config loader
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/config.sh"
 
