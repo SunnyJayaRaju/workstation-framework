@@ -38,11 +38,15 @@ jobs:
           chmod +x scripts/*.sh scripts/lib/*.sh
           ls -la scripts/*.sh scripts/lib/*.sh
           if [[ "$RUNNER_OS" == "macOS" ]]; then
-            echo "=== Before xattr -cr ==="
+            echo "=== Before xattr removal ==="
             xattr -l scripts/repo-clean.sh 2>/dev/null || true
-            xattr -cr scripts/ scripts/lib/ 2>/dev/null || true
+            # Remove quarantine attribute specifically
+            xattr -d com.apple.quarantine scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
+            xattr -d com.apple.quarantine scripts/ 2>/dev/null || true
+            xattr -d com.apple.quarantine scripts/lib/ 2>/dev/null || true
+            # Also remove recursively from current directory
             xattr -cr . 2>/dev/null || true
-            echo "=== After xattr -cr ==="
+            echo "=== After xattr removal ==="
             xattr -l scripts/repo-clean.sh 2>/dev/null || true
           fi
 
