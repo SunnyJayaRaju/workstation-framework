@@ -45,3 +45,19 @@ teardown() {
 
     [[ "$output" == *"Backup completed successfully."* ]]
 }
+
+@test "backup.sh creates backup files with mode 600" {
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash "${SCRIPTS_DIR}/backup.sh"
+
+    [ "$status" -eq 0 ]
+
+    local backup_file
+    backup_file=$(find "$BACKUP_DIR" -name '.zshrc_*' | head -1)
+    [ -n "$backup_file" ]
+    [ -f "$backup_file" ]
+
+    # Check file permissions are 600 (owner read/write only)
+    local perms
+    perms=$(stat -f "%A" "$backup_file")
+    [ "$perms" = "600" ]
+}
