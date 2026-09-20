@@ -9,6 +9,11 @@ set -euo pipefail
 # Purpose:
 #   Remove temporary files generated during development without
 #   affecting tracked project files.
+#
+# Operation:
+#   Scans the repository root (the parent directory of this script's location)
+#   for temporary files matching patterns: *.orig, *~, .DS_Store
+#   Excludes version control directories: .git, .hg, .svn
 ###############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,27 +53,27 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -n | --dry-run)
-                DRY_RUN=true
-                shift
-                ;;
-            -v | --verbose)
-                VERBOSE=true
-                shift
-                ;;
-            -h | --help)
-                usage
-                exit 0
-                ;;
-            -V | --version)
-                echo "repo-clean.sh 3.1.0"
-                exit 0
-                ;;
-            *)
-                echo "Unknown option: $1" >&2
-                usage
-                exit 64
-                ;;
+        -n | --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        -v | --verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -V | --version)
+            echo "repo-clean.sh 3.1.0"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage
+            exit 64
+            ;;
         esac
     done
 }

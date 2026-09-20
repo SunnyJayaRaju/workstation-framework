@@ -44,25 +44,30 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -h | --help)
-                usage
-                exit 0
-                ;;
-            -v | --version)
-                echo "check-project.sh 3.0.0"
-                exit 0
-                ;;
-            *)
-                echo "Unknown option: $1" >&2
-                usage
-                exit 64
-                ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -v | --version)
+            echo "check-project.sh 3.0.0"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage
+            exit 64
+            ;;
         esac
     done
 }
 
 main() {
     parse_args "$@"
+
+    # Ensure we operate from the repository root regardless of caller's cwd
+    local repo_root
+    repo_root="$(cd "${SCRIPT_DIR}/.." && pwd)"
+    cd "$repo_root"
 
     echo "=========================================="
     echo " Developer Workstation Framework"
