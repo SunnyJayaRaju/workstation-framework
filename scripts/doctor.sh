@@ -105,7 +105,7 @@ check_utilities() {
             backup.sh \
             bootstrap.sh \
             check-project.sh \
-            clean.sh \
+            repo-clean.sh \
             doctor.sh \
             install.sh \
             restore.sh \

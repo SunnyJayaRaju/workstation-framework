@@ -85,16 +85,19 @@ restore_latest_backup() {
     local basename
     basename="$(basename "$source")"
 
-    local latest_backup
-    latest_backup="$(
-        find "${backup_dir}" \
-            -maxdepth 1 \
-            -type f \
-            -name "${basename}_*" \
-            -print0 |
-            xargs -0 ls -t 2>/dev/null |
-            head -n1
-    )"
+    local latest_backup=""
+    local latest_mtime=0
+
+    # Find the latest backup file using pure Bash (no xargs/ls)
+    for file in "${backup_dir}"/"${basename}"_*; do
+        [[ -f "$file" ]] || continue
+        local mtime
+        mtime=$(stat -f "%m" "$file" 2>/dev/null || stat -c "%Y" "$file" 2>/dev/null || echo 0)
+        if [[ $mtime -gt $latest_mtime ]]; then
+            latest_mtime=$mtime
+            latest_backup=$file
+        fi
+    done
 
     if [[ -z "${latest_backup}" ]]; then
         log_fail "No backup found for: ${source}"

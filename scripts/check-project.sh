@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: check-project.sh
-# Version: 3.0.0
+# Version: 3.1.0
 #
 # Purpose:
 #   Verify the structure and quality of the

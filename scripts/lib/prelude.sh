@@ -23,23 +23,23 @@ readonly SCRIPT_DIR
 
 # Core libraries (load in dependency order)
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/colors.sh"
+source "${SCRIPT_DIR}/colors.sh"
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/logging.sh"
+source "${SCRIPT_DIR}/logging.sh"
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/filesystem.sh"
+source "${SCRIPT_DIR}/filesystem.sh"
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/checks.sh"
+source "${SCRIPT_DIR}/checks.sh"
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/errors.sh"
+source "${SCRIPT_DIR}/errors.sh"
 
 # Config loader (requires filesystem.sh)
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/config.sh"
+source "${SCRIPT_DIR}/config.sh"
 
 # Export marker for scripts to check
 export PRELUDE_LOADED

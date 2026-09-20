@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: bootstrap.sh
-# Version: 2.0.0
+# Version: 3.1.0
 #
 # Purpose:
 #   Install Developer Workstation Framework utilities (alias for install.sh).
