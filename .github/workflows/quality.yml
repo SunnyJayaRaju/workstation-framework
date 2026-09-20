@@ -36,7 +36,6 @@ jobs:
       - name: Make scripts executable
         run: |
           chmod +x scripts/*.sh scripts/lib/*.sh
-          ls -la scripts/*.sh scripts/lib/*.sh
 
       - name: Verify scripts are executable before tests
         run: |
@@ -44,6 +43,38 @@ jobs:
           ls -la scripts/repo-clean.sh scripts/restore.sh
           ./scripts/repo-clean.sh --version
           ./scripts/restore.sh --version
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck shfmt bats
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install shellcheck shfmt bats-core
+
+      - name: Verify Bash syntax
+        run: |
+          find scripts templates -type f -name "*.sh" -exec bash -n {} +
+
+      - name: Run ShellCheck
+        run: |
+          find scripts templates -type f -name "*.sh" -exec shellcheck -x {} +
+
+      - name: Verify shell formatting
+        run: |
+          find scripts templates -type f -name "*.sh" -exec shfmt -d -i 4 -ci {} +
+
+      - name: Debug restore.sh before tests
+        run: |
+          echo "=== Debug restore.sh ==="
+          pwd
+          ./scripts/restore.sh --help
+          ./scripts/restore.sh --version
+          ls -la /tmp
+          echo "BATS_TEST_TMPDIR=${BATS_TEST_TMPDIR:-not set}"
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
