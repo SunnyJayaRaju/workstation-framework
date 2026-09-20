@@ -56,21 +56,21 @@ parse_args() {
     CHECK_INSTALLED=false
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -h | --help)
-                usage
-                exit 0
-                ;;
-            -v | --version)
-                echo "doctor.sh 3.1.0"
-                exit 0
-                ;;
-            -i | --installed)
-                CHECK_INSTALLED=true
-                shift
-                ;;
-            *)
-                die EX_USAGE "Unknown option: $1"
-                ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        -v | --version)
+            echo "doctor.sh 3.1.0"
+            exit 0
+            ;;
+        -i | --installed)
+            CHECK_INSTALLED=true
+            shift
+            ;;
+        *)
+            die EX_USAGE "Unknown option: $1"
+            ;;
         esac
     done
 }
@@ -81,17 +81,33 @@ check_utilities() {
 
     log_info "Checking framework utilities (${label})..."
 
-    for utility in \
-        backup.sh \
-        check-project.sh \
-        repo-clean.sh \
-        doctor.sh \
-        install.sh \
-        restore.sh \
-        shell-quality.sh \
-        sync.sh \
-        uninstall.sh \
-        update.sh; do
+    # List of utilities that are installed (install.sh is the installer, not installed)
+    local utilities=(
+        backup.sh
+        check-project.sh
+        repo-clean.sh
+        doctor.sh
+        restore.sh
+        shell-quality.sh
+        sync.sh
+        uninstall.sh
+        update.sh
+    )
+
+    # List of utilities that should be executable from installed location
+    # (update.sh requires install.sh which is not installed; install.sh is not installed)
+    local executable_utilities=(
+        backup.sh
+        check-project.sh
+        repo-clean.sh
+        doctor.sh
+        restore.sh
+        shell-quality.sh
+        sync.sh
+        uninstall.sh
+    )
+
+    for utility in "${utilities[@]}"; do
         if file_exists "${base_dir}/${utility}"; then
             log_pass "${utility}"
         else
@@ -109,17 +125,7 @@ check_utilities() {
     # If checking installed, also verify they execute without error
     if [[ "$CHECK_INSTALLED" == "true" ]]; then
         log_info "Verifying installed utilities execute correctly..."
-        for utility in \
-            backup.sh \
-            check-project.sh \
-            repo-clean.sh \
-            doctor.sh \
-            install.sh \
-            restore.sh \
-            shell-quality.sh \
-            sync.sh \
-            uninstall.sh \
-            update.sh; do
+        for utility in "${executable_utilities[@]}"; do
             if [[ -x "${base_dir}/${utility}" ]]; then
                 # Run with --version to verify it works
                 if "${base_dir}/${utility}" --version >/dev/null 2>&1; then
