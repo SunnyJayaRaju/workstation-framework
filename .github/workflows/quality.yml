@@ -33,21 +33,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Make scripts executable and remove macOS quarantine
+      - name: Make scripts executable and aggressively remove macOS quarantine
         run: |
           chmod +x scripts/*.sh scripts/lib/*.sh
           ls -la scripts/*.sh scripts/lib/*.sh
           if [[ "$RUNNER_OS" == "macOS" ]]; then
-            echo "=== Before xattr removal ==="
-            xattr -l scripts/repo-clean.sh 2>/dev/null || true
-            # Remove quarantine attribute specifically
-            xattr -d com.apple.quarantine scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
-            xattr -d com.apple.quarantine scripts/ 2>/dev/null || true
-            xattr -d com.apple.quarantine scripts/lib/ 2>/dev/null || true
-            # Also remove recursively from current directory
+            echo "=== Removing quarantine attributes ==="
+            # Remove quarantine from all files recursively
             xattr -cr . 2>/dev/null || true
-            echo "=== After xattr removal ==="
-            xattr -l scripts/repo-clean.sh 2>/dev/null || true
+            # Specifically remove quarantine attribute
+            find . -name "*.sh" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
+            # Verify removal
+            xattr -l scripts/repo-clean.sh 2>/dev/null || echo "No extended attributes on repo-clean.sh"
           fi
 
       - name: Install dependencies (Ubuntu)
