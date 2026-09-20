@@ -8,6 +8,9 @@ setup() {
     mkdir -p "$BACKUP_DIR"
 
     printf '# test zshrc\n' >"$HOME/.zshrc"
+    printf '# test gitconfig\n' >"$HOME/.gitconfig"
+    mkdir -p "$HOME/.ssh"
+    printf 'Host *\n' >"$HOME/.ssh/config"
 }
 
 teardown() {
@@ -16,24 +19,27 @@ teardown() {
 }
 
 @test "backup.sh executes successfully" {
-    run env BACKUP_DIR="$BACKUP_DIR" ./scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" ./scripts/backup.sh
 
     [ "$status" -eq 0 ]
 }
 
-@test "backup.sh creates a backup file" {
-    run env BACKUP_DIR="$BACKUP_DIR" ./scripts/backup.sh
+@test "backup.sh creates backup files for all sources" {
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" ./scripts/backup.sh
 
     [ "$status" -eq 0 ]
 
-    run find "$BACKUP_DIR" -name 'zshrc_*'
+    run find "$BACKUP_DIR" -name '.zshrc_*'
+    [ "$status" -eq 0 ]
+    [ -n "$output" ]
 
+    run find "$BACKUP_DIR" -name '.gitconfig_*'
     [ "$status" -eq 0 ]
     [ -n "$output" ]
 }
 
 @test "backup.sh prints completion message" {
-    run env BACKUP_DIR="$BACKUP_DIR" ./scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" ./scripts/backup.sh
 
     [[ "$output" == *"Backup completed successfully."* ]]
 }

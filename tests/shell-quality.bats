@@ -8,7 +8,7 @@
 }
 
 @test "shell-quality.sh works with a valid script" {
-    run ./scripts/shell-quality.sh ./scripts/check-project.sh
+    run ./scripts/shell-quality.sh ./scripts/lib/errors.sh
 
     [ "$status" -eq 0 ]
 }

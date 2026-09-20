@@ -10,5 +10,5 @@
     run ./scripts/bootstrap.sh
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Bootstrap completed successfully."* ]]
+    [[ "$output" == *"Installation completed successfully."* ]]
 }

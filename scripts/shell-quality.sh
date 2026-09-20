@@ -1,45 +1,132 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ###############################################################################
 # Script: shell-quality.sh
-# Version: 1.0.0
+# Version: 3.1.0
 #
 # Purpose:
 #   Run quality checks against a shell script.
 ###############################################################################
 
-set -euo pipefail
+# shellcheck source=lib/config.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/config.sh
+source "${SCRIPT_DIR}/lib/config.sh"
+load_config
 
-if [[ $# -ne 1 ]]; then
-    echo "Usage:"
-    echo "  $0 <shell-script>"
-    exit 1
-fi
+# shellcheck source=lib/errors.sh
+source "${SCRIPT_DIR}/lib/errors.sh"
 
-readonly SCRIPT="$1"
+usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS] <shell-script>
 
-if [[ ! -f "$SCRIPT" ]]; then
-    echo "File not found:"
-    echo "  $SCRIPT"
-    exit 1
-fi
+Run quality checks against a shell script.
 
-echo
-echo "========================================="
-echo " Shell Quality Report"
-echo "========================================="
-echo
+Options:
+  -h, --help       Show this help and exit
+  -v, --version    Show version and exit
 
-echo "Checking Bash syntax..."
-bash -n "$SCRIPT"
+Checks performed:
+  - Bash syntax validation (bash -n)
+  - ShellCheck static analysis
+  - shfmt formatting verification
 
-echo "Checking ShellCheck..."
-shellcheck "$SCRIPT"
+Environment Variables:
+  ENABLE_SHELLCHECK  Enable/disable ShellCheck (default: true)
+  ENABLE_SHFMT       Enable/disable shfmt check (default: true)
+EOF
+}
 
-echo "Checking formatting..."
-shfmt -d "$SCRIPT"
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h | --help)
+                usage
+                exit 0
+                ;;
+            -v | --version)
+                echo "shell-quality.sh 3.1.0"
+                exit 0
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
 
-echo
-echo "========================================="
-echo "✓ Quality checks passed"
-echo "========================================="
+    if [[ $# -ne 1 ]]; then
+        usage >&2
+        die EX_USAGE "Exactly one script argument required"
+    fi
+}
+
+main() {
+    parse_args "$@"
+
+    readonly SCRIPT="$1"
+
+    if [[ ! -f "$SCRIPT" ]]; then
+        die EX_NOINPUT "File not found: $SCRIPT"
+    fi
+
+    echo
+    echo "========================================="
+    echo " Shell Quality Report"
+    echo "========================================="
+    echo
+
+    FAILED=0
+
+    echo "Checking Bash syntax..."
+    if ! bash -n "$SCRIPT"; then
+        echo "✗ Bash syntax check failed"
+        FAILED=1
+    else
+        echo "✓ Bash syntax OK"
+    fi
+
+    if [[ "${ENABLE_SHELLCHECK:-true}" == "true" ]]; then
+        echo
+        echo "Checking ShellCheck..."
+        if ! shellcheck "$SCRIPT"; then
+            echo "✗ ShellCheck found issues"
+            FAILED=1
+        else
+            echo "✓ ShellCheck passed"
+        fi
+    else
+        echo
+        echo "Skipping ShellCheck (ENABLE_SHELLCHECK=false)"
+    fi
+
+    if [[ "${ENABLE_SHFMT:-true}" == "true" ]]; then
+        echo
+        echo "Checking formatting..."
+        if ! shfmt -d -i 4 -ci "$SCRIPT" >/dev/null; then
+            echo "✗ Formatting issues found (run 'shfmt -w -i 4 -ci' to fix)"
+            FAILED=1
+        else
+            echo "✓ Formatting OK"
+        fi
+    else
+        echo
+        echo "Skipping formatting check (ENABLE_SHFMT=false)"
+    fi
+
+    echo
+    echo "========================================="
+    if [[ $FAILED -eq 0 ]]; then
+        echo "✓ All quality checks passed"
+        echo "========================================="
+        exit 0
+    else
+        echo "✗ Quality checks failed"
+        echo "========================================="
+        exit 1
+    fi
+}
+
+main "$@"

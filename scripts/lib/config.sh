@@ -3,41 +3,75 @@
 set -euo pipefail
 
 ###############################################################################
-# Configuration Loader
+# Configuration Loader - Safe parser for KEY=VALUE config files
 ###############################################################################
 
+# Determine CONFIG_DIR - handle both sourced from file and command line
+_config_src="${BASH_SOURCE[0]:-${0}}"
 CONFIG_DIR=$(
-    cd "$(dirname "${BASH_SOURCE[0]}")/../../config" 2>/dev/null &&
+    cd "$(dirname "${_config_src}")/../../config" 2>/dev/null &&
         pwd || echo "${HOME}/.workstation/config"
 )
+unset _config_src
 readonly CONFIG_DIR
 
-load_config() {
+# Parse a config file safely - only allows KEY=VALUE lines
+# Ignores comments, empty lines, and exports
+parse_config_file() {
+    local file="$1"
+    local prefix="${2:-}"
 
+    if [[ ! -f "$file" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+
+        # Match KEY=VALUE pattern (KEY: uppercase, underscores, digits)
+        if [[ "$line" =~ ^[[:space:]]*([A-Z_][A-Z0-9_]*)[[:space:]]*=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+
+            # Strip leading/trailing whitespace from value
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
+
+            # Remove surrounding quotes if present
+            if [[ "$value" =~ ^\"(.*)\"$ ]] || [[ "$value" =~ ^'(.*)'$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            fi
+
+            # Only set if not already set (environment takes precedence)
+            if [[ -z "${!key:-}" ]]; then
+                eval "${prefix}${key}=\${value}"
+            fi
+        fi
+    done <"$file"
+}
+
+load_config() {
     local default_config="${CONFIG_DIR}/default.conf"
     local user_config="${CONFIG_DIR}/user.conf"
 
-    if [[ -f "$default_config" ]]; then
-        # shellcheck disable=SC1090
-        source "$default_config"
-    else
-        # Fallback defaults when config files don't exist
-        : "${INSTALL_DIR:=$HOME/.local/bin}"
-        : "${BACKUP_DIR:=$HOME/.workstation/backups}"
-        : "${ENABLE_BACKUP:=true}"
-        : "${ENABLE_DOCTOR:=true}"
-        : "${ENABLE_CLEANUP:=true}"
-        : "${ENABLE_SHELLCHECK:=true}"
-        : "${ENABLE_SHFMT:=true}"
-    fi
+    # Load defaults first (lowest precedence)
+    parse_config_file "$default_config"
 
-    if [[ -f "$user_config" ]]; then
-        # shellcheck disable=SC1090
-        source "$user_config"
-    fi
+    # Load user overrides (higher precedence)
+    parse_config_file "$user_config"
+
+    # Fallback defaults when config files don't exist or values not set
+    : "${INSTALL_DIR:=$HOME/.local/bin}"
+    : "${BACKUP_DIR:=$HOME/.workstation/backups}"
+    : "${ENABLE_BACKUP:=true}"
+    : "${ENABLE_DOCTOR:=true}"
+    : "${ENABLE_CLEANUP:=true}"
+    : "${ENABLE_SHELLCHECK:=true}"
+    : "${ENABLE_SHFMT:=true}"
 }
 
 config_exists() {
-
     [[ -d "$CONFIG_DIR" ]]
 }

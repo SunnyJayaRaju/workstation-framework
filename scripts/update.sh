@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ###############################################################################
 # Script: update.sh
-# Version: 2.0.0
+# Version: 3.0.0
 #
 # Purpose:
 #   Update the local repository, reinstall framework utilities,
 #   and verify the installation.
 ###############################################################################
 
-set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
+
+# shellcheck source=lib/config.sh
+source "${SCRIPT_DIR}/lib/config.sh"
+
+load_config
 
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/colors.sh"
@@ -45,9 +50,14 @@ main() {
 
     echo
 
-    log_info "Running framework health check..."
+    # Run doctor if enabled
+    if [[ "${ENABLE_DOCTOR:-true}" == "true" ]]; then
+        log_info "Running framework health check..."
 
-    "${SCRIPT_DIR}/doctor.sh"
+        "${SCRIPT_DIR}/doctor.sh"
+    else
+        log_info "Skipping health check (ENABLE_DOCTOR=false)"
+    fi
 
     echo
 

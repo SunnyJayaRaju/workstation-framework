@@ -2,4 +2,4 @@
 source-path=SCRIPTDIR
 
 # Allow ShellCheck to follow sourced project files
-external-sources=true
+external-sources=false

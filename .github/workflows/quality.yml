@@ -15,28 +15,46 @@ permissions:
 jobs:
   quality:
     name: Shell Quality Checks
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: macos-latest
+            shellcheck: shellcheck
+            shfmt: shfmt
+            bats: bats
+          - os: ubuntu-latest
+            shellcheck: shellcheck
+            shfmt: shfmt
+            bats: bats
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Install dependencies
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck shfmt bats
 
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install shellcheck shfmt bats-core
+
       - name: Verify Bash syntax
         run: |
-          find scripts -type f -name "*.sh" -exec bash -n {} +
+          find scripts templates -type f -name "*.sh" -exec bash -n {} +
 
       - name: Run ShellCheck
         run: |
-          find scripts -type f -name "*.sh" -exec shellcheck -x {} +
+          find scripts templates -type f -name "*.sh" -exec shellcheck -x {} +
 
       - name: Verify shell formatting
         run: |
-          find scripts -type f -name "*.sh" -exec shfmt -d {} +
+          find scripts templates -type f -name "*.sh" -exec shfmt -d {} +
 
       - name: Run Bats tests
         run: |

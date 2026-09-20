@@ -8,7 +8,10 @@
 	format \
 	doctor \
 	check \
-	clean
+	clean \
+	repo-clean \
+	install \
+	uninstall
 
 all: lint format test doctor check ## Run all quality checks
 
@@ -37,5 +40,14 @@ doctor: ## Run workstation diagnostics
 check: ## Verify repository structure
 	./scripts/check-project.sh
 
-clean: ## Remove temporary files
-	./scripts/clean.sh
+clean: ## Remove test and build artifacts
+	rm -rf coverage reports .bats-tmp
+
+repo-clean: ## Remove repository temporary files (orig, ~, .DS_Store)
+	./scripts/repo-clean.sh
+
+install: ## Install framework utilities
+	./scripts/install.sh
+
+uninstall: ## Uninstall framework utilities
+	./scripts/uninstall.sh
