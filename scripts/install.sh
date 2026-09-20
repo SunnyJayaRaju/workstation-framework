@@ -36,7 +36,6 @@ source "${SCRIPT_DIR}/lib/filesystem.sh"
 
 readonly UTILITIES=(
     backup.sh
-    bootstrap.sh
     check-project.sh
     repo-clean.sh
     doctor.sh

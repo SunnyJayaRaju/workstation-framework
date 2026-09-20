@@ -100,7 +100,6 @@ main() {
     log_info "Removing installed framework utilities..."
 
     remove_utility "backup.sh"
-    remove_utility "bootstrap.sh"
     remove_utility "check-project.sh"
     remove_utility "repo-clean.sh"
     remove_utility "doctor.sh"

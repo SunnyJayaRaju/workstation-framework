@@ -167,8 +167,3 @@ teardown() {
     rm -f "$project_root/test_cleanup.orig" "$project_root/test_cleanup~"
 }
 
-@test "bootstrap.sh delegates to install.sh" {
-    run bash "${SCRIPTS_DIR}/bootstrap.sh"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Installation completed successfully."* ]]
-}

@@ -74,7 +74,6 @@ check_utilities() {
 
     for utility in \
         backup.sh \
-        bootstrap.sh \
         check-project.sh \
         repo-clean.sh \
         doctor.sh \
@@ -103,7 +102,6 @@ check_utilities() {
         log_info "Verifying installed utilities execute correctly..."
         for utility in \
             backup.sh \
-            bootstrap.sh \
             check-project.sh \
             repo-clean.sh \
             doctor.sh \
