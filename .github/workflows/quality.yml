@@ -74,6 +74,14 @@ jobs:
         run: |
           find scripts templates -type f -name "*.sh" -exec shfmt -d -i 4 -ci {} +
 
+      - name: Final macOS quarantine removal before tests
+        if: runner.os == 'macOS'
+        run: |
+          echo "=== Final quarantine removal before tests ==="
+          xattr -cr scripts/ scripts/lib/ 2>/dev/null || true
+          xattr -l scripts/repo-clean.sh 2>/dev/null || echo "No extended attributes on repo-clean.sh"
+          xattr -l scripts/lib/logging.sh 2>/dev/null || echo "No extended attributes on logging.sh"
+
       - name: Run Bats tests
         run: |
           bats tests
