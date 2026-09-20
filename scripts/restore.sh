@@ -89,12 +89,18 @@ restore_latest_backup() {
     local latest_mtime=0
     local file mtime
 
-    # Enable nullglob to prevent literal pattern when no matches
+    # Enable nullglob and dotglob to handle empty matches and dotfiles
     local shopt_nullglob_was_set=0
+    local shopt_dotglob_was_set=0
     if shopt -q nullglob; then
         shopt_nullglob_was_set=1
     else
         shopt -s nullglob
+    fi
+    if shopt -q dotglob; then
+        shopt_dotglob_was_set=1
+    else
+        shopt -s dotglob
     fi
 
     for file in "${backup_dir}/${basename}_"*; do
@@ -106,9 +112,12 @@ restore_latest_backup() {
         fi
     done
 
-    # Restore nullglob state
+    # Restore nullglob and dotglob state
     if [[ $shopt_nullglob_was_set -eq 0 ]]; then
         shopt -u nullglob
+    fi
+    if [[ $shopt_dotglob_was_set -eq 0 ]]; then
+        shopt -u dotglob
     fi
 
     if [[ -z "$latest_backup" ]]; then
