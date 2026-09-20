@@ -54,7 +54,7 @@ jobs:
 
       - name: Verify shell formatting
         run: |
-          find scripts templates -type f -name "*.sh" -exec shfmt -d {} +
+          find scripts templates -type f -name "*.sh" -exec shfmt -d -i 4 -ci {} +
 
       - name: Run Bats tests
         run: |
