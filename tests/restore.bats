@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load test_helper
+
 setup() {
     export HOME="$BATS_TEST_TMPDIR/home"
     export BACKUP_DIR="$BATS_TEST_TMPDIR/backups"
@@ -25,13 +27,13 @@ teardown() {
 }
 
 @test "restore.sh executes successfully" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/restore.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "${SCRIPTS_DIR}/restore.sh"
 
     [ "$status" -eq 0 ]
 }
 
 @test "restore.sh restores latest backup for all sources" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/restore.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "${SCRIPTS_DIR}/restore.sh"
 
     [ "$status" -eq 0 ]
 
@@ -45,7 +47,7 @@ teardown() {
 }
 
 @test "restore.sh prints completion message" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash scripts/restore.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash "${SCRIPTS_DIR}/restore.sh"
 
     [[ "$output" == *"Restore completed successfully."* ]]
 }
