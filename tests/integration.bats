@@ -2,6 +2,8 @@
 
 # Integration tests for full workflow scenarios
 
+load test_helper
+
 setup() {
     export HOME="$BATS_TEST_TMPDIR/home"
     export BACKUP_DIR="$BATS_TEST_TMPDIR/backups"
@@ -25,7 +27,7 @@ teardown() {
 
 @test "install.sh is idempotent (run twice = same result)" {
     # First install
-    run env INSTALL_DIR="$INSTALL_DIR" bash scripts/install.sh
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
     [ "$status" -eq 0 ]
 
     # Count installed files
@@ -33,7 +35,7 @@ teardown() {
     first_count=$(cat "$BATS_TEST_TMPDIR/count1.txt")
 
     # Second install (should succeed and not duplicate)
-    run env INSTALL_DIR="$INSTALL_DIR" bash scripts/install.sh
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
     [ "$status" -eq 0 ]
 
     find "$INSTALL_DIR" -type f -name "*.sh" | wc -l >"$BATS_TEST_TMPDIR/count2.txt"
@@ -44,7 +46,7 @@ teardown() {
 
 @test "uninstall.sh removes all installed files" {
     # Install first
-    run env INSTALL_DIR="$INSTALL_DIR" bash scripts/install.sh
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
     [ "$status" -eq 0 ]
 
     # Verify files exist
@@ -54,7 +56,7 @@ teardown() {
     [ "$status" -eq 0 ]
 
     # Uninstall
-    run env INSTALL_DIR="$INSTALL_DIR" bash scripts/uninstall.sh
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/uninstall.sh"
     [ "$status" -eq 0 ]
 
     # Verify files are gone
@@ -65,7 +67,7 @@ teardown() {
 }
 
 @test "backup.sh is idempotent (multiple runs create separate timestamped backups)" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash "${SCRIPTS_DIR}/backup.sh"
     [ "$status" -eq 0 ]
 
     find "$BACKUP_DIR" -name '.zshrc_*' | wc -l >"$BATS_TEST_TMPDIR/bcount1.txt"
@@ -75,7 +77,7 @@ teardown() {
     # Small delay to ensure different timestamp
     sleep 1
 
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash "${SCRIPTS_DIR}/backup.sh"
     [ "$status" -eq 0 ]
 
     find "$BACKUP_DIR" -name '.zshrc_*' | wc -l >"$BATS_TEST_TMPDIR/bcount2.txt"
@@ -85,7 +87,7 @@ teardown() {
 
 @test "restore.sh restores correct content after backup" {
     # Create backup
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "${SCRIPTS_DIR}/backup.sh"
     [ "$status" -eq 0 ]
 
     # Modify source files
@@ -93,7 +95,7 @@ teardown() {
     printf '# modified gitconfig\n' >"$HOME/.gitconfig"
 
     # Restore
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/restore.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "${SCRIPTS_DIR}/restore.sh"
     [ "$status" -eq 0 ]
 
     # Verify restored content
@@ -108,14 +110,14 @@ teardown() {
 
 @test "update.sh runs install and doctor when on a branch" {
     # This test simulates update.sh behavior in a git repo
-    run bash scripts/update.sh
+    run bash "${SCRIPTS_DIR}/update.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Framework updated successfully."* ]]
 }
 
 @test "doctor.sh detects missing dependencies" {
     # Test with a fake missing command by temporarily hiding git
-    PATH="/usr/bin:/bin" run bash scripts/doctor.sh
+    PATH="/usr/bin:/bin" run bash "${SCRIPTS_DIR}/doctor.sh"
     # Should still run but report missing git
     [ "$status" -eq 0 ]
     [[ "$output" == *"git missing"* ]] || [[ "$output" == *"git installed"* ]]
@@ -126,21 +128,21 @@ teardown() {
     local bad_script="$BATS_TEST_TMPDIR/bad.sh"
     echo 'if true; then echo "missing fi"' >"$bad_script"
 
-    run bash scripts/shell-quality.sh "$bad_script"
+    run bash "${SCRIPTS_DIR}/shell-quality.sh" "$bad_script"
     [ "$status" -ne 0 ]
     [[ "$output" == *"Quality checks failed"* ]]
 }
 
 @test "shell-quality.sh returns zero for valid script" {
     # Use a script that is known to be well-formatted and won't be modified by shfmt
-    run bash scripts/shell-quality.sh scripts/lib/errors.sh
+    run bash "${SCRIPTS_DIR}/shell-quality.sh" "${SCRIPTS_DIR}/lib/errors.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *"All quality checks passed"* ]]
 }
 
 @test "sync.sh handles detached HEAD gracefully" {
     # In BATS test environment, we're in a git repo but may be detached
-    run bash scripts/sync.sh
+    run bash "${SCRIPTS_DIR}/sync.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Synchronization check completed."* ]]
 }
@@ -154,7 +156,7 @@ teardown() {
     touch "$project_root/test_cleanup~"
 
     # Run repo-clean.sh --dry-run
-    run bash scripts/repo-clean.sh --dry-run
+    run bash "${SCRIPTS_DIR}/repo-clean.sh" --dry-run
     [ "$status" -eq 0 ]
 
     # Files should still exist after dry-run
@@ -166,7 +168,7 @@ teardown() {
 }
 
 @test "bootstrap.sh delegates to install.sh" {
-    run bash scripts/bootstrap.sh
+    run bash "${SCRIPTS_DIR}/bootstrap.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Installation completed successfully."* ]]
 }

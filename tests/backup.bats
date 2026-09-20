@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load test_helper
+
 setup() {
     export HOME="$BATS_TEST_TMPDIR/home"
     export BACKUP_DIR="$BATS_TEST_TMPDIR/backups"
@@ -19,13 +21,13 @@ teardown() {
 }
 
 @test "backup.sh executes successfully" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "${SCRIPTS_DIR}/backup.sh"
 
     [ "$status" -eq 0 ]
 }
 
 @test "backup.sh creates backup files for all sources" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash "${SCRIPTS_DIR}/backup.sh"
 
     [ "$status" -eq 0 ]
 
@@ -39,7 +41,7 @@ teardown() {
 }
 
 @test "backup.sh prints completion message" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash "${SCRIPTS_DIR}/backup.sh"
 
     [[ "$output" == *"Backup completed successfully."* ]]
 }

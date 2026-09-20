@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 
+load test_helper
+
 @test "config directory exists" {
-    source scripts/lib/config.sh
+    source "${SCRIPTS_DIR}/lib/config.sh"
 
     run config_exists
 
@@ -9,7 +11,7 @@
 }
 
 @test "default configuration loads" {
-    source scripts/lib/config.sh
+    source "${SCRIPTS_DIR}/lib/config.sh"
 
     load_config
 
