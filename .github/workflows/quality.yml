@@ -38,6 +38,13 @@ jobs:
           chmod +x scripts/*.sh scripts/lib/*.sh
           ls -la scripts/*.sh scripts/lib/*.sh
 
+      - name: Verify scripts are executable before tests
+        run: |
+          pwd
+          ls -la scripts/repo-clean.sh scripts/restore.sh
+          ./scripts/repo-clean.sh --version
+          ./scripts/restore.sh --version
+
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
