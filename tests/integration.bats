@@ -155,6 +155,11 @@ teardown() {
     touch "$project_root/test_cleanup.orig"
     touch "$project_root/test_cleanup~"
 
+    # Remove macOS quarantine attribute if present
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        xattr -d com.apple.quarantine "${SCRIPTS_DIR}/repo-clean.sh" 2>/dev/null || true
+    fi
+
     # Run repo-clean.sh --dry-run
     run bash "${SCRIPTS_DIR}/repo-clean.sh" --dry-run
     [ "$status" -eq 0 ]
