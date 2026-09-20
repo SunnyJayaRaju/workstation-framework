@@ -19,13 +19,13 @@ teardown() {
 }
 
 @test "backup.sh executes successfully" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" ./scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/backup.sh
 
     [ "$status" -eq 0 ]
 }
 
 @test "backup.sh creates backup files for all sources" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" ./scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .gitconfig" bash scripts/backup.sh
 
     [ "$status" -eq 0 ]
 
@@ -39,7 +39,7 @@ teardown() {
 }
 
 @test "backup.sh prints completion message" {
-    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" ./scripts/backup.sh
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash scripts/backup.sh
 
     [[ "$output" == *"Backup completed successfully."* ]]
 }
