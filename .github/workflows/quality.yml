@@ -33,7 +33,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Make scripts executable and aggressively remove macOS quarantine
+      - name: Make scripts executable and remove macOS quarantine
         run: |
           chmod +x scripts/*.sh scripts/lib/*.sh
           ls -la scripts/*.sh scripts/lib/*.sh
@@ -41,8 +41,11 @@ jobs:
             echo "=== Removing quarantine attributes ==="
             # Remove quarantine from all files recursively
             xattr -cr . 2>/dev/null || true
-            # Specifically remove quarantine attribute
+            # Specifically remove quarantine attribute from scripts
             find . -name "*.sh" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
+            # Also remove from parent directories
+            xattr -d com.apple.quarantine scripts/ 2>/dev/null || true
+            xattr -d com.apple.quarantine scripts/lib/ 2>/dev/null || true
             # Verify removal
             xattr -l scripts/repo-clean.sh 2>/dev/null || echo "No extended attributes on repo-clean.sh"
           fi
@@ -69,6 +72,11 @@ jobs:
       - name: Verify shell formatting
         run: |
           find scripts templates -type f -name "*.sh" -exec shfmt -d -i 4 -ci {} +
+
+      - name: Ad-hoc sign scripts on macOS to bypass Gatekeeper
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --deep --sign - scripts/*.sh scripts/lib/*.sh 2>/dev/null || true
 
       - name: Run Bats tests
         run: |
