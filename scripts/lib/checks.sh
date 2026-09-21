@@ -2,6 +2,7 @@
 
 ###############################################################################
 # Library: checks.sh
+# Version: see VERSION file
 #
 # Purpose:
 #   Shared validation helpers for the
