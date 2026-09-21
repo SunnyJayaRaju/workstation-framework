@@ -321,7 +321,7 @@ No repository files need to be modified for temporary configuration changes.
 |---------|-------------|
 | `backup.sh` | Create timestamped backups of supported configuration files. |
 | `check-project.sh` | Validate repository structure and required project files. |
-| `clean.sh` | Remove temporary development artifacts safely. |
+| `repo-clean.sh` | Remove temporary development artifacts safely. |
 | `doctor.sh` | Diagnose framework and workstation health. |
 | `install.sh` | Install framework utilities into the local environment. |
 | `restore.sh` | Restore the most recent configuration backup. |

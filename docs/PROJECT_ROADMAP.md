@@ -42,12 +42,12 @@ Completed:
 Completed:
 
 - backup.sh
-- bootstrap.sh
 - check-project.sh
-- clean.sh
 - doctor.sh
 - install.sh
+- repo-clean.sh
 - restore.sh
+- secrets.sh
 - shell-quality.sh
 - sync.sh
 - uninstall.sh

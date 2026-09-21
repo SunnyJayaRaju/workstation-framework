@@ -143,19 +143,19 @@ scripts/
 
     backup.sh
 
-    bootstrap.sh
-
     check-project.sh
-
-    clean.sh
 
     doctor.sh
 
     install.sh
 
+    repo-clean.sh
+
     restore.sh
 
     shell-quality.sh
+
+    secrets.sh
 
     sync.sh
 
@@ -204,25 +204,15 @@ README.md
 Completed and tested.
 
 ✓ backup.sh
-
-✓ bootstrap.sh
-
 ✓ check-project.sh
-
-✓ clean.sh
-
 ✓ doctor.sh
-
 ✓ install.sh
-
+✓ repo-clean.sh
 ✓ restore.sh
-
 ✓ shell-quality.sh
-
+✓ secrets.sh
 ✓ sync.sh
-
 ✓ uninstall.sh
-
 ✓ update.sh
 
 All are committed and pushed.
@@ -319,7 +309,9 @@ main
 
 Release status:
 
-Version 1.0.0 Release Candidate
+Version 2.1.0
+
+Last verified: 2026-09-21 — all 43 tests pass, clean-room install verified
 
 ---
 
