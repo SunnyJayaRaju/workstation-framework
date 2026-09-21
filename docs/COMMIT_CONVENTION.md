@@ -39,7 +39,7 @@ This project follows the **Conventional Commits** specification (https://www.con
 Scope identifies the affected component:
 
 - `backup`, `restore`, `install`, `uninstall`, `update`
-- `doctor`, `sync`, `repo-clean`, `bootstrap`
+- `doctor`, `sync`, `repo-clean`
 - `config`, `logging`, `errors`, `filesystem`, `checks`, `colors`
 - `secrets`, `prelude`
 - `test`, `ci`, `docs`, `build`
