@@ -6,8 +6,9 @@ If you discover a security issue, please do **not** create a public GitHub Issue
 
 Instead:
 
-- Open a GitHub Private Vulnerability Report (if available), or
-- Contact the project maintainer privately.
+- Use GitHub's **private vulnerability reporting** feature:
+  Go to the repository's **Security** tab → **Report a vulnerability**
+  (this feature is enabled for this repository)
 
 Please include:
 
