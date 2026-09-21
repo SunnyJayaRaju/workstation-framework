@@ -171,3 +171,62 @@ Planned additions include:
 This document is a living document.
 
 Whenever the repository structure or engineering practices change, this file should be updated in the same change set.
+
+---
+
+# Public Library API: secrets.sh
+
+## Purpose
+
+`scripts/lib/secrets.sh` provides a portable secrets management interface for macOS. It abstracts secret storage and retrieval across multiple backends:
+
+- **1Password CLI** (op) — team/shared secrets
+- **macOS Keychain** (security) — local per-user secrets
+- **Environment variables** — CI/CD and fallback
+
+## Backend Priority
+
+1. 1Password (if signed in)
+2. macOS Keychain
+3. Environment variables (uppercase with underscores)
+
+## API
+
+```bash
+source scripts/lib/secrets.sh
+
+# Get a secret (tries all backends in order)
+secret=$(get_secret "github-token")
+
+# Store a secret (uses Keychain)
+store_secret "api-key" "my-secret-value"
+
+# Delete a secret
+delete_secret "old-token"
+
+# List all stored secrets
+list_secrets
+```
+
+## Direct Backend Access
+
+```bash
+# 1Password (requires op CLI and sign-in)
+get_secret_op "Item Name" "field" ["vault"]
+store_secret_op "Item Name" "field" "value" ["vault"]
+
+# macOS Keychain
+get_secret_keychain "service" "account"
+store_secret_keychain "service" "account" "value"
+```
+
+## Security Notes
+
+- No command substitution or eval — safe for untrusted input
+- Keychain entries use service name `workstation-framework`
+- 1Password requires `op` CLI and active session
+- Environment variable fallback uses uppercase with underscores (e.g., `github-token` → `GITHUB_TOKEN`)
+
+## Testing
+
+See `tests/secrets.bats` for contract tests that exercise the public API against a real Keychain (mocked in CI).

@@ -20,6 +20,13 @@ if [[ -n "${SECRETS_LOADED:-}" ]]; then
 fi
 readonly SECRETS_LOADED=1
 
+# Determine SCRIPT_DIR (the scripts/ directory) if not already set correctly
+if [[ -z "${SCRIPT_DIR:-}" ]] || [[ ! -f "${SCRIPT_DIR}/lib/errors.sh" ]]; then
+    # Find scripts/ directory relative to this file's location
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    readonly SCRIPT_DIR
+fi
+
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/errors.sh"
 
@@ -126,7 +133,8 @@ get_secret() {
     # Try environment variable (uppercase with underscores)
     local env_var
     env_var=$(echo "$name" | tr '[:lower:]-' '[:upper:]_')
-    if [[ -n "${!env_var:-}" ]]; then
+    # Validate env_var is a valid bash variable name
+    if [[ "$env_var" =~ ^[A-Z_][A-Z0-9_]*$ ]] && [[ -n "${!env_var:-}" ]]; then
         echo "${!env_var}"
         return 0
     fi
