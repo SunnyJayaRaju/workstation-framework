@@ -56,8 +56,12 @@ teardown() {
     [ -n "$backup_file" ]
     [ -f "$backup_file" ]
 
-    # Check file permissions are 600 (owner read/write only)
+    # Check file permissions are 600 (owner read/write only) - cross-platform stat
     local perms
-    perms=$(stat -f "%A" "$backup_file")
+    if stat -f "%A" "$backup_file" >/dev/null 2>&1; then
+        perms=$(stat -f "%A" "$backup_file")   # BSD/macOS
+    else
+        perms=$(stat -c "%a" "$backup_file")   # GNU/Linux
+    fi
     [ "$perms" = "600" ]
 }
