@@ -121,7 +121,7 @@ This means:
 - Peer review
 - Incremental improvements
 
-Documentation evolves together with the codebase rather than existing as a separate artifact.  [oai_citation:1‡joernbuchwald.com](https://joernbuchwald.com/architecture-documentation?utm_source=chatgpt.com)
+Documentation evolves together with the codebase rather than existing as a separate artifact.
 
 ---
 

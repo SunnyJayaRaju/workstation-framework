@@ -136,7 +136,6 @@ The repository includes:
 - Coding standards
 - Review checklist
 - Roadmap
-- AI handover documentation
 - Project knowledge base
 - Changelog
 
@@ -423,7 +422,6 @@ Included documentation:
 - Coding Standards
 - Code Review Checklist
 - Project Roadmap
-- AI Handover Guide
 - Project Knowledge
 
 ---
