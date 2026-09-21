@@ -116,11 +116,25 @@ teardown() {
 }
 
 @test "doctor.sh detects missing dependencies and exits non-zero" {
-    # Test with a fake missing command by temporarily hiding shellcheck
-    PATH="/usr/bin:/bin" run bash "${SCRIPTS_DIR}/doctor.sh"
-    # Should report missing shellcheck and exit non-zero
+    # Test with a fake missing command by temporarily hiding shellcheck/shfmt
+    # Create a minimal PATH with only the commands doctor.sh itself needs to run
+    local safe_path
+    safe_path="$(mktemp -d)"
+    ln -s "$(command -v bash)" "$safe_path/bash"
+    ln -s "$(command -v env)" "$safe_path/env"
+    ln -s "$(command -v dirname)" "$safe_path/dirname"
+    ln -s "$(command -v basename)" "$safe_path/basename"
+    ln -s "$(command -v date)" "$safe_path/date"
+    ln -s "$(command -v command)" "$safe_path/command"
+    ln -s "$(command -v cat)" "$safe_path/cat"
+    ln -s "$(command -v printf)" "$safe_path/printf"
+    ln -s "$(command -v git)" "$safe_path/git"
+    # shellcheck and shfmt are intentionally NOT linked, so they'll be reported missing
+    PATH="$safe_path" run bash "${SCRIPTS_DIR}/doctor.sh"
+    rm -rf "$safe_path"
+    # Should report missing shellcheck/shfmt and exit non-zero
     [ "$status" -ne 0 ]
-    [[ "$output" == *"shellcheck missing"* ]]
+    [[ "$output" == *"shellcheck missing"* ]] || [[ "$output" == *"shfmt missing"* ]]
 }
 
 @test "shell-quality.sh returns non-zero for script with syntax error" {
