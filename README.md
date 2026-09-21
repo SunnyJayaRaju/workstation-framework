@@ -100,7 +100,6 @@ This allows local customization without modifying repository defaults while rema
 
 The framework includes utilities for:
 
-- Bootstrapping a workstation
 - Installing framework utilities
 - Updating installations
 - Removing installations
@@ -135,8 +134,6 @@ The repository includes:
 - Architecture documentation
 - Coding standards
 - Review checklist
-- Roadmap
-- Project knowledge base
 - Changelog
 
 ---
@@ -380,7 +377,6 @@ Current coverage includes:
 
 - Backup
 - Restore
-- Bootstrap
 - Installation
 - Update
 - Uninstall
@@ -393,7 +389,7 @@ Current coverage includes:
 
 Current status:
 
-- **24 automated tests**
+- **43 automated tests**
 - **0 failures**
 
 ---
@@ -421,14 +417,14 @@ Included documentation:
 - Changelog
 - Coding Standards
 - Code Review Checklist
-- Project Roadmap
-- Project Knowledge
+- Commit Convention
+- Security Policy
 
 ---
 
 # Roadmap
 
-## Version 1.x
+## Future Enhancements
 
 Future enhancements may include:
 
@@ -451,6 +447,7 @@ Please review:
 
 - `CONTRIBUTING.md`
 - `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
 
 Before submitting a Pull Request, ensure:
 
