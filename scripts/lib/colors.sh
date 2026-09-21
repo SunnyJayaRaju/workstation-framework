@@ -4,7 +4,7 @@
 
 ###############################################################################
 # Library: colors.sh
-# Version: 1.0.0
+# Version: see VERSION file
 #
 # Purpose:
 #   ANSI color definitions for terminal output.

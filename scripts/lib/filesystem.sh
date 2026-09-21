@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Library: filesystem.sh
-# Version: 1.0.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Shared filesystem helpers for the

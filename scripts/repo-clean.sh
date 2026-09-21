@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: repo-clean.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Remove temporary files generated during development without
@@ -66,7 +66,7 @@ parse_args() {
                 exit 0
                 ;;
             -V | --version)
-                echo "repo-clean.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

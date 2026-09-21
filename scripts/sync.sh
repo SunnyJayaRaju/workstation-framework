@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: sync.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Check synchronization status between the local repository
@@ -47,7 +47,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "sync.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

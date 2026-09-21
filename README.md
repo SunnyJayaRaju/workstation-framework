@@ -8,7 +8,7 @@
 ![ShellCheck](https://img.shields.io/badge/ShellCheck-enabled-4EAA25?logo=shellcheck&logoColor=white)
 ![Bats](https://img.shields.io/badge/Bats-enabled-4EAA25?logo=bats&logoColor=white)
 ![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
-![Version](https://img.shields.io/badge/version-v1.0.0-blue)
+![Version](https://img.shields.io/badge/version-v2.1.0-blue)
 
 ---
 
@@ -181,7 +181,7 @@ Release
 
 # Current Release
 
-**Version:** **v1.0.0**
+**Version:** **v2.1.0**
 
 ### Highlights
 

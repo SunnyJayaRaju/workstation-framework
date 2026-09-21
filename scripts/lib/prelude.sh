@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Library: prelude.sh
-# Version: 1.0.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Single entry point to load all standard framework libraries.

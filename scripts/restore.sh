@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: restore.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Restore the latest backups for configured configuration files.
@@ -57,7 +57,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "restore.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

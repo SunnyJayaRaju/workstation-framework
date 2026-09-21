@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Library: errors.sh
-# Version: 1.0.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Standardized error codes and error handling helpers for the

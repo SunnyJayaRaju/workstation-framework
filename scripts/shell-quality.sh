@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: shell-quality.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Run quality checks against a shell script.
@@ -48,7 +48,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "shell-quality.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

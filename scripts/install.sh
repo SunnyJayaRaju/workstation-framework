@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: install.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Install Developer Workstation Framework utilities.
@@ -71,7 +71,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "install.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

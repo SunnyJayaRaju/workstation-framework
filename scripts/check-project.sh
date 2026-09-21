@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: check-project.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Verify the structure and quality of the
@@ -49,7 +49,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "check-project.sh 3.0.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

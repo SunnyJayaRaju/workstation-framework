@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: uninstall.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Remove Developer Workstation Framework utilities.
@@ -68,7 +68,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "uninstall.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)

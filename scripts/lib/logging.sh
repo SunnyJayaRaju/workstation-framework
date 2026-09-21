@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Library: logging.sh
-# Version: 2.0.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Shared logging helpers for the

@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: update.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Update the local repository, reinstall framework utilities,

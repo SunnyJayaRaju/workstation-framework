@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Library: secrets.sh
-# Version: 1.0.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Secure secrets handling for the Developer Workstation Framework.

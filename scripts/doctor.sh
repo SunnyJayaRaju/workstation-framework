@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: doctor.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Verify that the Developer Workstation Framework and its dependencies
@@ -61,7 +61,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "doctor.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             -i | --installed)

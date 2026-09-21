@@ -4,7 +4,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: backup.sh
-# Version: 3.1.0
+# Version: see VERSION file
 #
 # Purpose:
 #   Create timestamped backups of configured configuration files.
@@ -68,7 +68,7 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "backup.sh 3.1.0"
+                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
                 exit 0
                 ;;
             *)
