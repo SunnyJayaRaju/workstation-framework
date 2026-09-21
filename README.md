@@ -208,7 +208,6 @@ workstation-framework/
 │   ├── example.conf
 │   └── user.conf
 ├── docs/                   # Project documentation
-├── examples/               # Usage examples (future)
 ├── scripts/
 │   ├── lib/                # Shared Bash libraries
 │   ├── backup.sh

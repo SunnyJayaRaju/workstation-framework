@@ -200,9 +200,9 @@ The Developer Workstation Framework has a **solid foundation** with good archite
 **Evidence:** Versions range from `1.0.0` to `2.1.0` across scripts; no single source of truth; `VERSION` file says `1.0.0`.  
 **Fix:** Single version source; auto-inject into script headers at release.
 
-### L02: `ARCHITECTURE.md` References Non-Existent `examples/` Directory
+### L02: `ARCHITECTURE.md` References Non-Existent `examples/` Directory — **FIXED**
 **File:** `docs/ARCHITECTURE.md:42-44, 107-112`  
-**Fix:** Remove or create directory.
+**Fix:** Removed references to non-existent `examples/` directory and `safe-clean.sh`/`clean-pro.sh` scripts. Updated repository structure to match actual layout.
 
 ### L03: `CODING_STANDARDS.md` and `CODE_REVIEW_CHECKLIST.md` Are Empty Templates
 **Files:** `docs/SHELL_CODING_STANDARDS.md` (25 lines, only headers), `docs/CODE_REVIEW_CHECKLIST.md` (17 lines, only headers)  
