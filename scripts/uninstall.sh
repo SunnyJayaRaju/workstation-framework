@@ -33,7 +33,7 @@ load_config
 # shellcheck source=lib/errors.sh
 # (already sourced above)
 
-require_var INSTALL_DIR EX_CONFIG
+require_var INSTALL_DIR "$EX_CONFIG"
 
 readonly INSTALL_DIR
 

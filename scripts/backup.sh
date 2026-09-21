@@ -21,7 +21,7 @@ load_config
 # shellcheck source=lib/errors.sh
 source "${SCRIPT_DIR}/lib/errors.sh"
 
-require_var BACKUP_DIR EX_CONFIG
+require_var BACKUP_DIR "$EX_CONFIG"
 
 readonly BACKUP_DIR
 

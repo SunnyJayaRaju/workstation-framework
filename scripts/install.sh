@@ -21,7 +21,7 @@ load_config
 # shellcheck source=lib/errors.sh
 source "${SCRIPT_DIR}/lib/errors.sh"
 
-require_var INSTALL_DIR EX_CONFIG
+require_var INSTALL_DIR "$EX_CONFIG"
 
 readonly INSTALL_DIR
 
@@ -85,7 +85,7 @@ install_lib_directory() {
     local lib_source="${SCRIPT_DIR}/lib"
     local lib_target="${INSTALL_DIR}/lib"
 
-    require_directory "$lib_source" EX_OSFILE
+    require_directory "$lib_source" "$EX_OSFILE"
 
     ensure_directory "${lib_target}"
 
@@ -93,6 +93,21 @@ install_lib_directory() {
         log_pass "Library directory installed"
     else
         die EX_IOERR "Failed to install library directory"
+    fi
+}
+
+install_config_directory() {
+    local config_source="${SCRIPT_DIR}/../config"
+    local config_target="${INSTALL_DIR}/../config"
+
+    require_directory "$config_source" "$EX_OSFILE"
+
+    ensure_directory "${config_target}"
+
+    if cp -Rp "${config_source}"/* "${config_target}/"; then
+        log_pass "Config directory installed"
+    else
+        die EX_IOERR "Failed to install config directory"
     fi
 }
 
@@ -137,6 +152,12 @@ main() {
     log_info "Installing library directory..."
 
     install_lib_directory
+
+    echo
+
+    log_info "Installing config directory..."
+
+    install_config_directory
 
     echo
 
