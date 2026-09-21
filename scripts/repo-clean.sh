@@ -66,7 +66,14 @@ parse_args() {
                 exit 0
                 ;;
             -V | --version)
-                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
+                local version_file
+                version_file="$(dirname "$0")/../VERSION"
+                if [[ -f "$version_file" ]]; then
+                    echo "$(basename "$0") $(cat "$version_file")"
+                else
+                    echo "$(basename "$0") unknown (VERSION file not found)" >&2
+                    exit 1
+                fi
                 exit 0
                 ;;
             *)

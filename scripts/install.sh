@@ -71,7 +71,14 @@ parse_args() {
                 exit 0
                 ;;
             -v | --version)
-                echo "$(basename "$0") $(cat "$(dirname "$0")/../VERSION")"
+                local version_file
+                version_file="$(dirname "$0")/../VERSION"
+                if [[ -f "$version_file" ]]; then
+                    echo "$(basename "$0") $(cat "$version_file")"
+                else
+                    echo "$(basename "$0") unknown (VERSION file not found)" >&2
+                    exit 1
+                fi
                 exit 0
                 ;;
             *)
@@ -108,6 +115,19 @@ install_config_directory() {
         log_pass "Config directory installed"
     else
         die EX_IOERR "Failed to install config directory"
+    fi
+}
+
+install_version_file() {
+    local version_source="${SCRIPT_DIR}/../VERSION"
+    local version_target="${INSTALL_DIR}/../VERSION"
+
+    require_file "$version_source" "$EX_OSFILE"
+
+    if cp -p "$version_source" "$version_target"; then
+        log_pass "Version file installed"
+    else
+        die EX_IOERR "Failed to install version file"
     fi
 }
 
@@ -158,6 +178,12 @@ main() {
     log_info "Installing config directory..."
 
     install_config_directory
+
+    echo
+
+    log_info "Installing version file..."
+
+    install_version_file
 
     echo
 
