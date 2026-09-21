@@ -39,9 +39,6 @@ Workstation-Framework/
 ├── docs/
 │   Project documentation
 │
-├── examples/
-│   Example scripts and reference implementations
-│
 ├── scripts/
 │   Production-ready utility scripts
 │
@@ -99,18 +96,19 @@ Contains stable, tested utilities.
 Examples:
 
 - backup.sh
-- safe-clean.sh
-- clean-pro.sh
+- check-project.sh
+- doctor.sh
+- install.sh
+- repo-clean.sh
+- restore.sh
+- shell-quality.sh
+- sync.sh
+- uninstall.sh
+- update.sh
 
 ---
 
-## examples/
 
-Contains learning material and experimental implementations.
-
-Nothing in this directory should be considered production-ready.
-
----
 
 # Documentation Strategy
 
