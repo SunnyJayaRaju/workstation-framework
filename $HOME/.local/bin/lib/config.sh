@@ -61,15 +61,6 @@ load_config() {
 
     # Load user overrides (higher precedence)
     parse_config_file "$user_config"
-
-    # Fallback defaults when config files don't exist or values not set
-    : "${INSTALL_DIR:=$HOME/.local/bin}"
-    : "${BACKUP_DIR:=$HOME/.workstation/backups}"
-    : "${ENABLE_BACKUP:=true}"
-    : "${ENABLE_DOCTOR:=true}"
-    : "${ENABLE_CLEANUP:=true}"
-    : "${ENABLE_SHELLCHECK:=true}"
-    : "${ENABLE_SHFMT:=true}"
 }
 
 config_exists() {

@@ -15,6 +15,28 @@ CONFIG_DIR=$(
 unset _config_src
 readonly CONFIG_DIR
 
+# Safely expand environment variables in a string (e.g., $HOME, ${USER})
+# Only expands $VAR or ${VAR} patterns - NO command substitution $(...) or `...`
+safe_expand() {
+    local str="$1"
+    local result=""
+    local remaining="$str"
+
+    while [[ "$remaining" =~ \$\{?([A-Za-z_][A-Za-z0-9_]*)\}? ]]; do
+        local match="${BASH_REMATCH[0]}"
+        local var_name="${BASH_REMATCH[1]}"
+
+        # Get everything before the match
+        local before="${remaining%%"$match"*}"
+        result+="$before"
+        result+="${!var_name:-}"
+        # Remove the match and everything before it from remaining
+        remaining="${remaining#*"$match"}"
+    done
+    result+="$remaining"
+    printf "%s" "$result"
+}
+
 # Parse a config file safely - only allows KEY=VALUE lines
 # Ignores comments, empty lines, and exports
 parse_config_file() {
@@ -44,9 +66,12 @@ parse_config_file() {
                 value="${BASH_REMATCH[1]}"
             fi
 
+            # Safely expand environment variables in the value
+            value="$(safe_expand "$value")"
+
             # Only set if not already set (environment takes precedence)
             if [[ -z "${!key:-}" ]]; then
-                eval "${prefix}${key}=\${value}"
+                printf -v "${prefix}${key}" "%s" "$value"
             fi
         fi
     done <"$file"
