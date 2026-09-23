@@ -133,6 +133,8 @@ The repository includes:
 
 - Architecture documentation
 - Coding standards
+- Security policy (SECURITY.md)
+- Commit conventions (docs/COMMIT_CONVENTION.md)
 - Review checklist
 - Changelog
 
