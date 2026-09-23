@@ -34,7 +34,7 @@ Most workstation setup repositories eventually become difficult to maintain beca
 
 Developer Workstation Framework addresses these problems by organizing workstation automation into a maintainable engineering project with clearly separated responsibilities.
 
-Instead of treating infrastructure as a collection of scripts, the repository treats it as software.
+Instead of treating infrastructure as a collection of scripts, the repository treats it as real software.
 
 ---
 
