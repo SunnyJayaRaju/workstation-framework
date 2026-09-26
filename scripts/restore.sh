@@ -31,6 +31,8 @@ IFS=' ' read -r -a BACKUP_SOURCES <<<"${BACKUP_SOURCES:-${HOME}/.zshrc ${HOME}/.
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+DRY_RUN=false
+
 usage() {
     cat <<EOF
 Usage: $0 [OPTIONS]
@@ -38,6 +40,7 @@ Usage: $0 [OPTIONS]
 Restore the latest backups for configured configuration files.
 
 Options:
+  -n, --dry-run    Show what would be restored without restoring
   -h, --help       Show this help and exit
   -v, --version    Show version and exit
 
@@ -52,6 +55,10 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
+            -n | --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
             -h | --help)
                 usage
                 exit 0
@@ -113,7 +120,29 @@ restore_latest_backup() {
         return 1
     fi
 
-    cp -p "$latest_backup" "$source"
+    if [[ "$DRY_RUN" == true ]]; then
+        log_pass "Would restore ${source} from ${latest_backup}"
+        return 0
+    fi
+
+    # The destination may not exist yet (e.g. ~/.ssh on a fresh account)
+    mkdir -p "$(dirname "$source")"
+
+    # Preserve whatever is being overwritten so a restore is reversible
+    if [[ -f "$source" ]]; then
+        local safety
+        safety="${source}.restore-safety-$(date +%Y%m%d%H%M%S)"
+        if ! cp -p "$source" "$safety"; then
+            log_fail "Failed to preserve current file: ${source}"
+            return 1
+        fi
+        log_info "Current file preserved as ${safety}"
+    fi
+
+    if ! cp -p "$latest_backup" "$source"; then
+        log_fail "Failed to restore ${source}"
+        return 1
+    fi
     log_pass "Restored ${source} from ${latest_backup}"
 }
 
@@ -127,6 +156,10 @@ main() {
     echo
 
     log_info "Searching for latest backups..."
+
+    if [[ "$DRY_RUN" == true ]]; then
+        log_info "Dry run mode - no files will be modified"
+    fi
 
     local failed=0
     local source

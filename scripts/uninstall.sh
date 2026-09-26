@@ -35,6 +35,32 @@ load_config
 
 require_var INSTALL_DIR "$EX_CONFIG"
 
+# Guard the destructive rm/rm -rf calls below against a misconfigured
+# INSTALL_DIR. require_var only proves the value is non-empty.
+validate_install_dir() {
+    local dir="$1"
+
+    if [[ "$dir" != /* ]]; then
+        die EX_CONFIG "INSTALL_DIR must be an absolute path: ${dir}"
+    fi
+
+    # Resolve symlinks where possible; fall back to the literal path
+    local resolved
+    resolved="$(cd "$dir" 2>/dev/null && pwd)" || resolved="$dir"
+
+    if [[ "$resolved" == "/" ]]; then
+        die EX_CONFIG "INSTALL_DIR resolves to filesystem root, refusing to continue: ${dir}"
+    fi
+
+    # Count path separators; fewer than 2 means "/" or "/top-level-dir"
+    local slashes="${resolved//[^\/]/}"
+    if ((${#slashes} < 2)); then
+        die EX_CONFIG "INSTALL_DIR is too shallow (refusing top-level directory): ${dir}"
+    fi
+}
+
+validate_install_dir "$INSTALL_DIR"
+
 readonly INSTALL_DIR
 
 # shellcheck source-path=SCRIPTDIR/lib
