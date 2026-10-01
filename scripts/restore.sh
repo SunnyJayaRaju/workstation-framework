@@ -80,7 +80,7 @@ parse_args() {
                 exit 0
                 ;;
             *)
-                die EX_USAGE "Unknown option: $1"
+                die "$EX_USAGE" "Unknown option: $1"
                 ;;
         esac
     done

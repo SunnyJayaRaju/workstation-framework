@@ -76,7 +76,7 @@ parse_args() {
                 ;;
             -r | --root)
                 if [[ -z "${2:-}" ]]; then
-                    die EX_USAGE "--root requires a path argument"
+                    die "$EX_USAGE" "--root requires a path argument"
                 fi
                 ROOT_OVERRIDE="$2"
                 shift 2
@@ -175,12 +175,12 @@ main() {
     project_root="${ROOT_OVERRIDE:-$DEFAULT_ROOT}"
 
     if [[ ! -d "$project_root" ]]; then
-        die EX_NOINPUT "Not a directory: ${project_root}"
+        die "$EX_NOINPUT" "Not a directory: ${project_root}"
     fi
 
     if [[ ! -d "${project_root}/.git" ]]; then
         log_fail "Refusing to run: ${project_root} is not a project (no .git directory)."
-        die EX_USAGE "Pass --root <path> to target a specific git project."
+        die "$EX_USAGE" "Pass --root <path> to target a specific git project."
     fi
 
     PROJECT_ROOT="$(cd "$project_root" && pwd)"

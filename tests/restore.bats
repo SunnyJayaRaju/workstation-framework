@@ -143,3 +143,36 @@ teardown() {
     [[ "$output" == *"never"* ]]
     [[ "$output" == *"safety"* ]]
 }
+# --- FIX 4 (M16): failure-path coverage ---------------------------------
+
+@test "restore.sh fails clearly when no backup exists for a source" {
+    # Nothing in BACKUP_DIR matches this source
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".no-such-file" bash \
+        "${SCRIPTS_DIR}/restore.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"No backup found"* ]]
+    [[ "$output" == *"no-such-file"* ]]
+    [[ "$output" != *"Restore completed successfully"* ]]
+
+    # and nothing was created for it
+    [ ! -e "$HOME/.no-such-file" ]
+}
+
+@test "restore.sh restores the available source when another has no backup" {
+    # .zshrc has a backup (from setup); .missing does not.
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .missing" bash \
+        "${SCRIPTS_DIR}/restore.sh"
+
+    # overall non-zero because of the partial failure
+    [ "$status" -ne 0 ]
+
+    # Assert on the restore output BEFORE any further `run` clobbers $output.
+    [[ "$output" == *"No backup found"* ]]
+    [[ "$output" == *"missing"* ]]
+    [[ "$output" != *"Restore completed successfully"* ]]
+
+    # the one that could be restored WAS restored
+    run cat "$HOME/.zshrc"
+    [[ "$output" == *"# restored zshrc"* ]]
+}
