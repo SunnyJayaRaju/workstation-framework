@@ -35,7 +35,9 @@ FAILURES=0
 # Wrapper for log_fail that increments failure counter
 log_fail_tracked() {
     log_fail "$1"
-    ((FAILURES++))
+    # Not ((FAILURES++)): that returns 1 on the first failure, so `set -e`
+    # would abort doctor.sh and it could never report a second problem.
+    FAILURES=$((FAILURES + 1))
 }
 
 usage() {
@@ -174,7 +176,7 @@ main() {
 
     log_info "Checking required commands..."
 
-    for command in git bash shellcheck shfmt; do
+    for command in git bash shellcheck shfmt jq; do
         if command -v "${command}" >/dev/null 2>&1; then
             log_pass "${command} installed"
         else

@@ -138,6 +138,35 @@ remove_lib_directory() {
     fi
 }
 
+# Remove the artifacts install.sh writes outside INSTALL_DIR: the install
+# marker, and the config/ directory and VERSION file that live beside the
+# install directory. Only ever removes these three named paths, and only
+# under an INSTALL_DIR that already passed validate_install_dir.
+remove_install_artifacts() {
+    local prefix
+    prefix="$(cd "${INSTALL_DIR}/.." 2>/dev/null && pwd)" || prefix=""
+
+    if [[ -z "$prefix" || "$prefix" == "/" ]]; then
+        log_warn "Could not resolve install prefix; skipping artifact removal"
+        return 0
+    fi
+
+    if [[ -f "${INSTALL_DIR}/.install_dir" ]]; then
+        rm -f "${INSTALL_DIR}/.install_dir"
+        log_pass "Install marker removed"
+    fi
+
+    if [[ -d "${prefix}/config" ]]; then
+        rm -rf "${prefix}/config"
+        log_pass "Configuration directory removed"
+    fi
+
+    if [[ -f "${prefix}/VERSION" ]]; then
+        rm -f "${prefix}/VERSION"
+        log_pass "Version file removed"
+    fi
+}
+
 main() {
     parse_args "$@"
 
@@ -162,10 +191,16 @@ main() {
     echo
 
     log_info "Removing library directory..."
-
     remove_lib_directory
 
     echo
+
+    log_info "Removing install artifacts..."
+
+    remove_install_artifacts
+
+    echo
+
     log_pass "Framework utilities removed successfully."
 }
 

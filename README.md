@@ -239,6 +239,7 @@ Required tools:
 - Git
 - ShellCheck
 - shfmt
+- jq (required by the 1Password backend in `scripts/lib/secrets.sh`)
 - Bats (for development and testing)
 
 Recommended:

@@ -103,8 +103,11 @@ delete_files() {
     local count=0
 
     for file in "${files[@]}"; do
+        # stderr, not stdout: this function's stdout is captured by the caller
+        # via $(...) to obtain the count, so a stdout log here would be
+        # captured into the number (e.g. "Removed Removing: /path 2 file(s)").
         if [[ "$VERBOSE" == true ]]; then
-            echo "Removing: $file"
+            echo "Removing: $file" >&2
         fi
         if [[ "$DRY_RUN" == false ]]; then
             rm -f "$file"
