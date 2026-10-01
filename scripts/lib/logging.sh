@@ -47,8 +47,8 @@ case "$LOG_LEVEL" in
     [0-9] | [0-9][0-9])
         ;;
     *)
-        printf 'Error: invalid LOG_LEVEL "%s" (expected error, warn, info, debug, or a number)\n' \
-            "$LOG_LEVEL" >&2
+        printf 'Error: invalid LOG_LEVEL "%s"\n' "$LOG_LEVEL" >&2
+        printf 'Expected error, warn, info, debug, or a number\n' >&2
         exit 78 # EX_CONFIG
         ;;
 esac

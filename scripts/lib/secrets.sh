@@ -153,7 +153,7 @@ get_secret() {
         # would be lost and this would silently fall through to another
         # backend and return a different secret.
         if ! has_jq; then
-            die "$EX_UNAVAILABLE" "jq is required to read secrets from 1Password but was not found (install jq, e.g. 'brew install jq')"
+            die "$EX_UNAVAILABLE" "jq not found; needed to read 1Password secrets"
         fi
 
         value=$(get_secret_op "Workstation Secrets" "$name" 2>/dev/null || true)
