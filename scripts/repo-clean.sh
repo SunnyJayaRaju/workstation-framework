@@ -19,17 +19,28 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-readonly PROJECT_ROOT
+# Default scan root: the parent of this script's directory. For a source-tree
+# checkout that is the repository; for an INSTALLED copy (e.g. ~/.local/bin)
+# it is the install prefix, which is NOT a project. Such runs are refused
+# below unless the caller names a root explicitly.
+DEFAULT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly DEFAULT_ROOT
+
+ROOT_OVERRIDE=""
 
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/colors.sh"
+
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/errors.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 DRY_RUN=false
 VERBOSE=false
+removed=0
+failed=0
 
 usage() {
     cat <<EOF
@@ -38,10 +49,11 @@ Usage: $0 [OPTIONS]
 Remove temporary development artifacts safely.
 
 Options:
-  -n, --dry-run    Show what would be deleted without deleting
-  -v, --verbose    Show each file being deleted
-  -h, --help       Show this help and exit
-  -V, --version    Show version and exit
+  -n, --dry-run       Show what would be deleted without deleting
+  -v, --verbose       Show each file being deleted
+  -r, --root <path>   Scan <path> instead of the script's parent directory
+  -h, --help          Show this help and exit
+  -V, --version       Show version and exit
 
 Targets (only within project root):
   *.orig           Merge conflict backup files
@@ -56,6 +68,13 @@ parse_args() {
             -n | --dry-run)
                 DRY_RUN=true
                 shift
+                ;;
+            -r | --root)
+                if [[ -z "${2:-}" ]]; then
+                    die EX_USAGE "--root requires a path argument"
+                fi
+                ROOT_OVERRIDE="$2"
+                shift 2
                 ;;
             -v | --verbose)
                 VERBOSE=true
@@ -98,26 +117,36 @@ find_temp_files() {
         -print
 }
 
+# Removes each file. Continues past failures so one unwritable file cannot
+# block cleanup of everything else, but reports an honest tally: a single
+# "succeeded failed" line the caller turns into the exit status.
+# Prints "<removed> <failed>" on stdout.
 delete_files() {
     local files=("$@")
-    local count=0
+    local removed=0
+    local failed=0
 
     for file in "${files[@]}"; do
-        # stderr, not stdout: this function's stdout is captured by the caller
-        # via $(...) to obtain the count, so a stdout log here would be
-        # captured into the number (e.g. "Removed Removing: /path 2 file(s)").
+        # stderr, not stdout: stdout is captured by the caller via $(...) to
+        # obtain the tally, so a stdout log here would corrupt the count.
         if [[ "$VERBOSE" == true ]]; then
             echo "Removing: $file" >&2
         fi
-        if [[ "$DRY_RUN" == false ]]; then
-            rm -f "$file"
+
+        if [[ "$DRY_RUN" == true ]]; then
+            removed=$((removed + 1))
+            continue
         fi
-        # Not ((count++)): that returns 1 when the expression evaluates to 0
-        # (i.e. on the first file), which is a failing command under `set -e`.
-        count=$((count + 1))
+
+        if rm -f "$file"; then
+            removed=$((removed + 1))
+        else
+            failed=$((failed + 1))
+            log_fail "Could not remove: $file"
+        fi
     done
 
-    echo "$count"
+    echo "${removed} ${failed}"
 }
 
 main() {
@@ -128,6 +157,24 @@ main() {
     echo " Developer Workstation Repo Cleanup"
     echo "========================================="
     echo
+
+    # This tool deletes files recursively. Only ever point it at something
+    # that is recognisably a project, so an installed copy cannot be tricked
+    # into treating its install prefix (e.g. ~/.local) as a scratch tree.
+    local project_root
+    project_root="${ROOT_OVERRIDE:-$DEFAULT_ROOT}"
+
+    if [[ ! -d "$project_root" ]]; then
+        die EX_NOINPUT "Not a directory: ${project_root}"
+    fi
+
+    if [[ ! -d "${project_root}/.git" ]]; then
+        log_fail "Refusing to run: ${project_root} is not a project (no .git directory)."
+        die EX_USAGE "Pass --root <path> to target a specific git project."
+    fi
+
+    PROJECT_ROOT="$(cd "$project_root" && pwd)"
+    readonly PROJECT_ROOT
 
     if [[ "$DRY_RUN" == true ]]; then
         log_info "Dry run mode - no files will be deleted"
@@ -156,11 +203,20 @@ main() {
         done
     else
         log_info "Removing temporary files..."
-        deleted=$(delete_files "${temp_files[@]}")
-        log_pass "Removed $deleted file(s)"
+        tally=$(delete_files "${temp_files[@]}")
+        removed="${tally%% *}"
+        failed="${tally##* }"
+
+        log_info "${removed} removed, ${failed} failed"
     fi
 
     echo
+
+    if [[ "$failed" -gt 0 ]]; then
+        log_fail "Cleanup finished with errors."
+        exit 1
+    fi
+
     log_pass "Cleanup completed successfully."
 }
 

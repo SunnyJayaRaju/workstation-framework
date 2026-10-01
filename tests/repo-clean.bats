@@ -5,10 +5,21 @@ load test_helper
 setup() {
     # Hermetic project tree: repo-clean.sh derives PROJECT_ROOT from its own
     # location, so a copy under BATS_TEST_TMPDIR keeps it off the real repo.
+    # The tree is git-marked because repo-clean.sh refuses to operate on a
+    # directory with no project marker.
     PROJECT_DIR="${BATS_TEST_TMPDIR}/proj"
-    mkdir -p "${PROJECT_DIR}/scripts"
+    mkdir -p "${PROJECT_DIR}/scripts" "${PROJECT_DIR}/.git"
     cp -R "${SCRIPTS_DIR}/." "${PROJECT_DIR}/scripts/"
     CLEAN="${PROJECT_DIR}/scripts/repo-clean.sh"
+}
+
+# A copy with NO project marker anywhere above it, i.e. what an installed
+# copy at ~/.local/bin looks like: its parent is not a git repository.
+make_markerless_copy() {
+    MARKERLESS="${BATS_TEST_TMPDIR}/installed-like/bin"
+    mkdir -p "$MARKERLESS"
+    cp -R "${SCRIPTS_DIR}" "${MARKERLESS}/scripts"
+    MARKERLESS_CLEAN="${MARKERLESS}/scripts/repo-clean.sh"
 }
 
 @test "repo-clean.sh executes successfully" {
@@ -47,9 +58,8 @@ setup() {
 
     run bash "$CLEAN"
 
-    # The counter must survive set -e inside a command substitution
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Removed 3 file(s)"* ]]
+    [[ "$output" == *"3 removed, 0 failed"* ]]
 
     [ ! -e "${PROJECT_DIR}/one~" ]
     [ ! -e "${PROJECT_DIR}/two.orig" ]
@@ -63,14 +73,93 @@ setup() {
     run bash "$CLEAN" --verbose
 
     [ "$status" -eq 0 ]
-
-    # The per-file "Removing:" log must not be captured into the count
-    [[ "$output" == *"Removed 2 file(s)"* ]]
-    [[ "$output" != *"Removed Removing:"* ]]
-
-    # ...and the verbose log itself is still shown
+    [[ "$output" == *"2 removed, 0 failed"* ]]
+    [[ "$output" != *"removed Removing"* ]]
     [[ "$output" == *"Removing:"* ]]
 
     [ ! -e "${PROJECT_DIR}/one~" ]
     [ ! -e "${PROJECT_DIR}/two.orig" ]
+}
+
+# --- FIX 1: a failed removal is reported, and does not stop the rest ------
+
+@test "repo-clean.sh removes the rest and reports a failed removal" {
+    printf 'ok\n' >"${PROJECT_DIR}/deletable~"
+    printf 'ok\n' >"${PROJECT_DIR}/also-deletable.orig"
+
+    # A file in a non-writable directory: `rm` needs write access to the
+    # directory, not the file, so this is how a removal actually fails.
+    mkdir -p "${PROJECT_DIR}/locked"
+    printf 'stuck\n' >"${PROJECT_DIR}/locked/stuck.orig"
+    chmod 555 "${PROJECT_DIR}/locked"
+
+    run bash "$CLEAN"
+
+    # Must continue: the removable files are gone...
+    [ ! -e "${PROJECT_DIR}/deletable~" ]
+    [ ! -e "${PROJECT_DIR}/also-deletable.orig" ]
+
+    # ...the failure is named...
+    [[ "$output" == *"locked/stuck.orig"* ]]
+
+    # ...and the exit code is non-zero
+    [ "$status" -ne 0 ]
+
+    chmod 755 "${PROJECT_DIR}/locked"
+}
+
+@test "repo-clean.sh reports a succeeded/failed summary" {
+    mkdir -p "${PROJECT_DIR}/locked"
+    printf 'stuck\n' >"${PROJECT_DIR}/locked/stuck.orig"
+    chmod 555 "${PROJECT_DIR}/locked"
+    printf 'ok\n' >"${PROJECT_DIR}/fine~"
+
+    run bash "$CLEAN"
+    [[ "$output" == *"1 removed"* ]]
+    [[ "$output" == *"1 failed"* ]]
+
+    chmod 755 "${PROJECT_DIR}/locked"
+}
+
+# --- FIX 2: refuse to operate outside a project; allow --root ------------
+
+@test "repo-clean.sh refuses to run outside a git project by default" {
+    make_markerless_copy
+    printf 'keep\n' >"${MARKERLESS}/important~"
+
+    run bash "$MARKERLESS_CLEAN"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"--root"* ]]
+
+    # Nothing was touched
+    [ -f "${MARKERLESS}/important~" ]
+}
+
+@test "repo-clean.sh honours an explicit --root" {
+    printf 'junk\n' >"${PROJECT_DIR}/junk~"
+
+    # Point at the git-marked project from an unrelated location
+    run bash "$CLEAN" --root "$PROJECT_DIR"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"1 removed, 0 failed"* ]]
+
+    [ ! -e "${PROJECT_DIR}/junk~" ]
+}
+
+@test "repo-clean.sh --root still refuses a directory with no project marker" {
+    make_markerless_copy
+    printf 'keep\n' >"${MARKERLESS}/important~"
+
+    # An explicit path does not grant permission to nuke an arbitrary tree.
+    run bash "$CLEAN" --root "$MARKERLESS"
+
+    [ "$status" -ne 0 ]
+    [ -f "${MARKERLESS}/important~" ]
+}
+
+@test "repo-clean.sh documents --root in its help text" {
+    run bash "$CLEAN" --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--root"* ]]
 }

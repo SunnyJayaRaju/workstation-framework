@@ -3,14 +3,35 @@
 load test_helper
 
 setup() {
-    export HOME="${BATS_TEST_TMPDIR}/home"
-    export INSTALL_DIR="${BATS_TEST_TMPDIR}/install"
-    mkdir -p "$HOME" "$INSTALL_DIR"
+    # A unique service name per test, so nothing here ever writes to the real
+    # "workstation-framework" service the framework uses in production.
+    export KC_SERVICE="workstation-framework-test-${BATS_TEST_NUMBER}"
+    export KC_ACCOUNT="probe"
+    KC_ACCOUNTS=()
 
-    STUB_BIN="${BATS_TEST_TMPDIR}/stubbin"
-    mkdir -p "$STUB_BIN"
-    STUB_LOG="${BATS_TEST_TMPDIR}/stub.log"
-    : >"$STUB_LOG"
+    source "${SCRIPTS_DIR}/lib/secrets.sh"
+}
+
+# Track an account so teardown can delete it even if an assertion fails.
+kc_track() {
+    KC_ACCOUNTS+=("$1")
+}
+
+teardown() {
+    # Unconditional cleanup: teardown runs even when the test fails, so a red
+    # test cannot leave items in the developer's real login Keychain.
+    #
+    # NOTE: reading Keychain items back can raise a macOS GUI authorisation
+    # prompt on some systems. That is deliberately NOT suppressed here — this
+    # suite genuinely talks to the real login Keychain, and hiding the prompt
+    # would hide the fact that it is happening.
+    if [[ "$OSTYPE" == darwin* ]] && command -v security >/dev/null 2>&1; then
+        local acct
+        for acct in "${KC_ACCOUNTS[@]:-}"; do
+            security delete-generic-password -s "$KC_SERVICE" -a "$acct" \
+                >/dev/null 2>&1 || true
+        done
+    fi
 }
 
 # A PATH containing only the handful of commands the scripts need, so that a
@@ -27,12 +48,92 @@ minimal_path() {
 
 link_stub() {
     # link_stub <name> <exit-code> <stderr-message>
+    mkdir -p "${BATS_TEST_TMPDIR}/stubbin"
     printf '#!/usr/bin/env bash\necho "%s" >&2\nexit %s\n' "$3" "$2" \
-        >"${STUB_BIN}/$1"
-    chmod +x "${STUB_BIN}/$1"
+        >"${BATS_TEST_TMPDIR}/stubbin/$1"
+    chmod +x "${BATS_TEST_TMPDIR}/stubbin/$1"
 }
 
-# --- M3: jq is required for the 1Password read path ---------------------
+# --- library basics -----------------------------------------------------
+
+@test "secrets.sh loads without error" {
+    [ -n "${SECRETS_LOADED:-}" ]
+}
+
+@test "has_keychain returns true on macOS" {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        run has_keychain
+        [ "$status" -eq 0 ]
+    else
+        skip "Keychain only available on macOS"
+    fi
+}
+
+@test "get_secret falls back to environment variable" {
+    export TEST_SECRET_VALUE="from-env"
+    run get_secret "test-secret-value"
+    [ "$status" -eq 0 ]
+    [ "$output" = "from-env" ]
+}
+
+@test "get_secret returns non-zero for unknown secret with no fallback" {
+    unset NONEXISTENT_SECRET || true
+    run get_secret "nonexistent-secret"
+    [ "$status" -ne 0 ]
+}
+
+# --- Keychain round-trip, isolated from the production service ----------
+
+@test "store_secret_keychain and get_secret_keychain round-trip (macOS only)" {
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+        skip "Keychain only available on macOS"
+    fi
+
+    kc_track "$KC_ACCOUNT"
+    store_secret_keychain "$KC_SERVICE" "$KC_ACCOUNT" "roundtrip-value"
+
+    run get_secret_keychain "$KC_SERVICE" "$KC_ACCOUNT"
+    [ "$status" -eq 0 ]
+    [ "$output" = "roundtrip-value" ]
+    # teardown removes it whether or not the assertions above pass
+}
+
+@test "Keychain tests never write to the production service name" {
+    # Guards the isolation this file depends on: nothing should store under
+    # the real "workstation-framework" service.
+    [ "$KC_SERVICE" != "workstation-framework" ]
+}
+
+# --- injection ----------------------------------------------------------
+
+@test "get_secret rejects command injection in secret name" {
+    # Secret names with command substitution should not execute (treated as
+    # literal). Read-only, so nothing is stored.
+    run get_secret '"'"'$(nonexistent-command-injection-test)'"'"'
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"injection"* ]]
+}
+
+@test "store_secret_keychain does not execute an injected account name" {
+    if [[ "$OSTYPE" != "darwin"* ]]; then
+        skip "Keychain only available on macOS"
+    fi
+
+    kc_track '$(echo exploited)'
+    run store_secret_keychain "$KC_SERVICE" '$(echo exploited)' "value"
+
+    # Quoting means it is stored literally rather than executed, so success is
+    # fine; what matters is that no output was produced by the injected
+    # command. teardown deletes the literal-named item either way.
+    [[ "$output" != *"exploited"* ]]
+
+    # and the account really is stored under its literal name
+    run get_secret_keychain "$KC_SERVICE" '$(echo exploited)'
+    [ "$status" -eq 0 ]
+    [ "$output" = "value" ]
+}
+
+# --- M3: jq is required for the 1Password read path ----------------------
 
 @test "get_secret fails with a jq diagnostic when the 1Password path is used without jq" {
     source "${SCRIPTS_DIR}/lib/secrets.sh"
@@ -44,7 +145,7 @@ link_stub() {
     # ...but jq is absent from the minimal PATH.
     # -u SECRETS_LOADED: secrets.sh exports its load guard, so without this the
     # child's `source` is a silent no-op and get_secret would not exist.
-    run env -u SECRETS_LOADED PATH="${STUB_BIN}:${safe}" bash -c \
+    run env -u SECRETS_LOADED PATH="${BATS_TEST_TMPDIR}/stubbin:${safe}" bash -c \
         "source '${SCRIPTS_DIR}/lib/secrets.sh'; get_secret 'some-token'"
 
     # EX_UNAVAILABLE (69), not a bare-name `exit EX_UNAVAILABLE` shell error
@@ -89,7 +190,7 @@ link_stub() {
 
     link_stub op 1 "op: could not sign in"
 
-    PATH="${STUB_BIN}:${PATH}" run store_secret_op "Item" "field" "value"
+    PATH="${BATS_TEST_TMPDIR}/stubbin:${PATH}" run store_secret_op "Item" "field" "value"
     [ "$status" -ne 0 ]
     [[ "$output" == *"could not sign in"* ]]
 }
@@ -99,7 +200,7 @@ link_stub() {
 
     link_stub security 1 "SecKeychainSearchCopyNext: item not found"
 
-    PATH="${STUB_BIN}:${PATH}" run delete_secret "no-such-secret"
+    PATH="${BATS_TEST_TMPDIR}/stubbin:${PATH}" run delete_secret "no-such-secret"
     [ "$status" -ne 0 ]
     [[ "$output" == *"SecKeychainSearchCopyNext"* ]]
     # guards against matching bash's own "command not found"
@@ -111,21 +212,10 @@ link_stub() {
 
     link_stub security 1 "boom"
 
-    PATH="${STUB_BIN}:${PATH}" run delete_secret "no-such-secret"
-    # must NOT look like a clean success
+    PATH="${BATS_TEST_TMPDIR}/stubbin:${PATH}" run delete_secret "no-such-secret"
     [[ "$output" != *"removed"* ]]
 }
 
-@test "secrets.sh call sites document the argv exposure" {
-    # `security add-generic-password` and `op item create` have no argv-free
-    # non-interactive form for these subcommands, so the process-table
-    # exposure is documented at the call site rather than engineered away.
-    run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/scripts/lib/secrets.sh"
-    [ "$status" -eq 0 ]
-
-    run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/docs/ARCHITECTURE.md"
-    [ "$status" -eq 0 ]
-}
 # --- FIX 2: the load guard must not leak into child environments ---------
 
 @test "secrets.sh defines its functions in a child shell" {
@@ -144,4 +234,15 @@ link_stub() {
 
     run env bash -c 'echo "guard=[${SECRETS_LOADED:-unset}]"'
     [[ "$output" == *"guard=[unset]"* ]]
+}
+
+@test "secrets.sh call sites document the argv exposure" {
+    # `security add-generic-password` and `op item create` have no argv-free
+    # non-interactive form for these subcommands, so the process-table
+    # exposure is documented at the call site rather than engineered away.
+    run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/scripts/lib/secrets.sh"
+    [ "$status" -eq 0 ]
+
+    run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/docs/ARCHITECTURE.md"
+    [ "$status" -eq 0 ]
 }
