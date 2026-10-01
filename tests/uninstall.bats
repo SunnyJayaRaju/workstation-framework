@@ -126,3 +126,46 @@ stub_rm() {
     [ "$status" -eq 0 ]
     [[ "$output" != *"too shallow"* ]]
 }
+
+@test "uninstall.sh removes the install prefix config, VERSION and marker" {
+    # Realistic layout: INSTALL_DIR=<prefix>/bin, with <prefix>/config,
+    # <prefix>/VERSION and <prefix>/bin/.install_dir beside the utilities.
+    local prefix="${BATS_TEST_TMPDIR}/opt/ws"
+    local bindir="${prefix}/bin"
+
+    mkdir -p "${bindir}/lib" "${prefix}/config"
+    printf '# cfg\n' >"${prefix}/config/default.conf"
+    printf '2.1.0\n' >"${prefix}/VERSION"
+    printf '%s\n' "$bindir" >"${bindir}/.install_dir"
+    touch "${bindir}/backup.sh" "${bindir}/lib/logging.sh"
+
+    run env INSTALL_DIR="$bindir" bash "${SCRIPTS_DIR}/uninstall.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"removed successfully"* ]]
+
+    # utilities and lib gone (pre-existing behaviour)
+    [ ! -f "${bindir}/backup.sh" ]
+    [ ! -d "${bindir}/lib" ]
+
+    # the three artifacts left behind by the old uninstall are now removed
+    [ ! -f "${bindir}/.install_dir" ]
+    [ ! -e "${prefix}/VERSION" ]
+    [ ! -d "${prefix}/config" ]
+
+    # the install prefix itself is NOT removed
+    [ -d "$prefix" ]
+}
+
+@test "uninstall.sh leaves the install prefix alone when it is not ours" {
+    stub_rm
+
+    # A sibling config/ outside the validated prefix must be untouched.
+    local bindir="${BATS_TEST_TMPDIR}/opt/other/bin"
+    mkdir -p "$bindir"
+    run env INSTALL_DIR="$bindir" PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
+    [ "$status" -eq 0 ]
+
+    # Nothing above the prefix was removed
+    [ -d "${BATS_TEST_TMPDIR}/opt/other" ]
+    [ -d "$bindir" ]
+}

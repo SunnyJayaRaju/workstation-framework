@@ -27,6 +27,33 @@ readonly LOG_LEVEL_DEBUG=3
 # Default log level
 : "${LOG_LEVEL:=$LOG_LEVEL_INFO}"
 
+# LOG_LEVEL may be a number or a level name. Comparing a *name* numerically
+# (`[[ info -lt 2 ]]`) makes bash evaluate an undefined variable as 0, which
+# silently drops INFO and PASS output. Map names explicitly and reject
+# anything unrecognised instead of quietly swallowing the log.
+case "$LOG_LEVEL" in
+    error | ERROR)
+        LOG_LEVEL="$LOG_LEVEL_ERROR"
+        ;;
+    warn | WARN)
+        LOG_LEVEL="$LOG_LEVEL_WARN"
+        ;;
+    info | INFO)
+        LOG_LEVEL="$LOG_LEVEL_INFO"
+        ;;
+    debug | DEBUG)
+        LOG_LEVEL="$LOG_LEVEL_DEBUG"
+        ;;
+    [0-9] | [0-9][0-9])
+        ;;
+    *)
+        printf 'Error: invalid LOG_LEVEL "%s" (expected error, warn, info, debug, or a number)\n' \
+            "$LOG_LEVEL" >&2
+        exit 78 # EX_CONFIG
+        ;;
+esac
+readonly LOG_LEVEL
+
 # Log format: simple, json, timestamped
 : "${LOG_FORMAT:=simple}"
 

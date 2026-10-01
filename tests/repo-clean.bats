@@ -55,3 +55,22 @@ setup() {
     [ ! -e "${PROJECT_DIR}/two.orig" ]
     [ ! -e "${PROJECT_DIR}/.DS_Store" ]
 }
+
+@test "repo-clean.sh --verbose does not corrupt the reported count" {
+    printf 'a\n' >"${PROJECT_DIR}/one~"
+    printf 'b\n' >"${PROJECT_DIR}/two.orig"
+
+    run bash "$CLEAN" --verbose
+
+    [ "$status" -eq 0 ]
+
+    # The per-file "Removing:" log must not be captured into the count
+    [[ "$output" == *"Removed 2 file(s)"* ]]
+    [[ "$output" != *"Removed Removing:"* ]]
+
+    # ...and the verbose log itself is still shown
+    [[ "$output" == *"Removing:"* ]]
+
+    [ ! -e "${PROJECT_DIR}/one~" ]
+    [ ! -e "${PROJECT_DIR}/two.orig" ]
+}

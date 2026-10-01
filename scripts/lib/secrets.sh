@@ -35,6 +35,13 @@ has_op_cli() {
     command -v op >/dev/null 2>&1
 }
 
+# Check if jq is available. The 1Password read path parses `op` JSON with jq,
+# so a missing jq would otherwise fail silently and fall through to a
+# different backend, returning a different secret than the caller asked for.
+has_jq() {
+    command -v jq >/dev/null 2>&1
+}
+
 # Check if macOS Keychain is available
 has_keychain() {
     command -v security >/dev/null 2>&1
@@ -48,7 +55,7 @@ get_secret_op() {
     local vault_name="${3:-}"
 
     if ! has_op_cli; then
-        die EX_UNAVAILABLE "1Password CLI (op) not found"
+        die "$EX_UNAVAILABLE" "1Password CLI (op) not found"
     fi
 
     local args=("item" "get" "$item_name" "--fields" "$field_name" "--format" "json")
@@ -70,7 +77,7 @@ store_secret_op() {
     local vault_name="${4:-}"
 
     if ! has_op_cli; then
-        die EX_UNAVAILABLE "1Password CLI (op) not found"
+        die "$EX_UNAVAILABLE" "1Password CLI (op) not found"
     fi
 
     # KNOWN EXPOSURE: the secret is passed in argv ("$field_name=$value"), so
@@ -85,7 +92,13 @@ store_secret_op() {
         args+=("--vault" "$vault_name")
     fi
 
-    op "${args[@]}" >/dev/null 2>&1
+    # Do not discard the exit status: a failed write (not signed in, vault
+    # locked, duplicate title) must not look like a success. stderr is
+    # surfaced because it is the only diagnostic `op` gives.
+    local op_stderr=""
+    if ! op_stderr="$(op "${args[@]}" 2>&1 >/dev/null)"; then
+        die "$EX_IOERR" "1Password write failed for item '${item_name}'${op_stderr:+: ${op_stderr}}"
+    fi
 }
 
 # Get secret from macOS Keychain
@@ -95,7 +108,7 @@ get_secret_keychain() {
     local account="$2"
 
     if ! has_keychain; then
-        die EX_UNAVAILABLE "macOS security command not found"
+        die "$EX_UNAVAILABLE" "macOS security command not found"
     fi
 
     security find-generic-password -s "$service" -a "$account" -w 2>/dev/null
@@ -109,7 +122,7 @@ store_secret_keychain() {
     local value="$3"
 
     if ! has_keychain; then
-        die EX_UNAVAILABLE "macOS security command not found"
+        die "$EX_UNAVAILABLE" "macOS security command not found"
     fi
 
     # KNOWN EXPOSURE: the secret is passed in argv (-w "$value"), so it is
@@ -135,6 +148,14 @@ get_secret() {
 
     # Try 1Password first (if signed in)
     if has_op_cli && op account list >/dev/null 2>&1; then
+        # Checked here, not inside get_secret_op: the call below discards
+        # stderr and swallows the exit status, so a diagnostic raised there
+        # would be lost and this would silently fall through to another
+        # backend and return a different secret.
+        if ! has_jq; then
+            die "$EX_UNAVAILABLE" "jq is required to read secrets from 1Password but was not found (install jq, e.g. 'brew install jq')"
+        fi
+
         value=$(get_secret_op "Workstation Secrets" "$name" 2>/dev/null || true)
         if [[ -n "$value" ]]; then
             echo "$value"
@@ -175,8 +196,14 @@ store_secret() {
 delete_secret() {
     local name="$1"
 
-    if has_keychain; then
-        security delete-generic-password -s "workstation-framework" -a "$name" 2>/dev/null || true
+    if ! has_keychain; then
+        die "$EX_UNAVAILABLE" "Cannot delete '${name}': macOS security command not found"
+    fi
+
+    # As with store_secret_op, surface the failure rather than swallowing it.
+    local sec_stderr=""
+    if ! sec_stderr="$(security delete-generic-password -s "workstation-framework" -a "$name" 2>&1 >/dev/null)"; then
+        die "$EX_IOERR" "Failed to delete secret '${name}'${sec_stderr:+: ${sec_stderr}}"
     fi
 }
 
