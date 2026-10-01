@@ -79,3 +79,30 @@ teardown() {
     [ -f "${sibling}/VERSION" ]
     [ -f "${sibling}/default.conf" ]
 }
+
+# --- FIX 4 (M16): install must not claim success when it fails -----------
+
+@test "install.sh reports failure clearly instead of claiming success" {
+    # A read-only INSTALL_DIR: it exists, so ensure_directory succeeds, but
+    # the copy cannot proceed.
+    local readonly_dir="${BATS_TEST_TMPDIR}/readonly-install"
+    mkdir -p "$readonly_dir"
+    chmod 555 "$readonly_dir"
+
+    run env INSTALL_DIR="$readonly_dir" bash "${SCRIPTS_DIR}/install.sh"
+
+    chmod 755 "$readonly_dir"
+
+    # EX_CANTCREAT (73), not a bare `exit EX_CANTCREAT` shell error
+    [ "$status" -eq 73 ]
+    [[ "$output" == *"Cannot create"* ]]
+    [[ "$output" != *"Installation completed successfully"* ]]
+    [[ "$output" != *"numeric argument required"* ]]
+}
+
+@test "install.sh reports usage errors with EX_USAGE, not a shell error" {
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh" --nope
+    [ "$status" -eq 64 ]
+    [[ "$output" == *"Unknown option"* ]]
+    [[ "$output" != *"numeric argument required"* ]]
+}

@@ -11,9 +11,10 @@
 	clean \
 	repo-clean \
 	install \
-	uninstall
+	uninstall \
+	syntax
 
-all: lint format test doctor check ## Run all quality checks
+all: syntax lint format test doctor check ## Run all quality checks
 
 help: ## Show available commands
 	@echo ""
@@ -27,6 +28,9 @@ help: ## Show available commands
 
 test: ## Run all Bats tests
 	bats tests
+
+syntax: ## Check Bash syntax of every script
+	find scripts templates -type f -name "*.sh" -exec bash -n {} +
 
 lint: ## Run ShellCheck
 	find scripts templates -type f -name "*.sh" -exec shellcheck {} +

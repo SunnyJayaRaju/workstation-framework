@@ -82,7 +82,7 @@ parse_args() {
                 exit 0
                 ;;
             *)
-                die EX_USAGE "Unknown option: $1"
+                die "$EX_USAGE" "Unknown option: $1"
                 ;;
         esac
     done
@@ -94,12 +94,17 @@ install_lib_directory() {
 
     require_directory "$lib_source" "$EX_OSFILE"
 
-    ensure_directory "${lib_target}"
+    # ensure_directory can fail (e.g. INSTALL_DIR not writable). Without this
+    # check the raw `mkdir` error escapes under `set -e` instead of the
+    # framework's own diagnostic.
+    if ! ensure_directory "${lib_target}"; then
+        die "$EX_CANTCREAT" "Cannot create library directory: ${lib_target}"
+    fi
 
     if cp -Rp "${lib_source}"/* "${lib_target}/"; then
         log_pass "Library directory installed"
     else
-        die EX_IOERR "Failed to install library directory"
+        die "$EX_IOERR" "Failed to install library directory"
     fi
 
     prune_stale_lib_files
@@ -136,12 +141,14 @@ install_config_directory() {
 
     require_directory "$config_source" "$EX_OSFILE"
 
-    ensure_directory "${config_target}"
+    if ! ensure_directory "${config_target}"; then
+        die "$EX_CANTCREAT" "Cannot create configuration directory: ${config_target}"
+    fi
 
     if cp -Rp "${config_source}"/* "${config_target}/"; then
         log_pass "Config directory installed"
     else
-        die EX_IOERR "Failed to install config directory"
+        die "$EX_IOERR" "Failed to install config directory"
     fi
 }
 
@@ -154,7 +161,7 @@ install_version_file() {
     if cp -p "$version_source" "$version_target"; then
         log_pass "Version file installed"
     else
-        die EX_IOERR "Failed to install version file"
+        die "$EX_IOERR" "Failed to install version file"
     fi
 }
 
@@ -165,7 +172,7 @@ install_utility() {
         chmod +x "${INSTALL_DIR}/${utility}"
         log_pass "${utility} installed"
     else
-        die EX_IOERR "Failed to install ${utility}"
+        die "$EX_IOERR" "Failed to install ${utility}"
     fi
 }
 
@@ -176,7 +183,7 @@ verify_installation() {
         if [[ -x "${INSTALL_DIR}/${utility}" ]]; then
             log_pass "${utility} verified"
         else
-            die EX_SOFTWARE "${utility} verification failed"
+            die "$EX_SOFTWARE" "${utility} verification failed"
         fi
     done
 }
@@ -192,7 +199,9 @@ main() {
 
     log_info "Preparing installation..."
 
-    ensure_directory "${INSTALL_DIR}"
+    if ! ensure_directory "${INSTALL_DIR}"; then
+        die "$EX_CANTCREAT" "Cannot create installation directory: ${INSTALL_DIR}"
+    fi
 
     echo
 

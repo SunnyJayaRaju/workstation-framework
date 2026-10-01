@@ -122,3 +122,52 @@ make_untracked_framework_repo() {
     [[ "$output" != *"No upstream tracking branch"* ]]
     [ "$(git -C "$FRAMEWORK_REPO" rev-parse HEAD)" != "$before" ]
 }
+
+# --- FIX 1 (L11): -h/--help and -v/--version must have no side effects --
+
+@test "update.sh --help prints usage and performs no git or install work" {
+    local stub="${BATS_TEST_TMPDIR}/gitstub"
+    mkdir -p "$stub"
+    : >"$stub/calls.log"
+    printf '#!/usr/bin/env bash\necho "git $*" >> "%s/calls.log"\nexit 0\n' \
+        "$stub/calls.log" >"${stub}/git"
+    chmod +x "${stub}/git"
+
+    local target="${BATS_TEST_TMPDIR}/never-installed"
+
+    run env PATH="${stub}:${PATH}" INSTALL_DIR="$target" \
+        bash "${SCRIPTS_DIR}/update.sh" --help
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage:"* ]]
+
+    # zero git invocations, and nothing installed
+    [ ! -s "$stub/calls.log" ]
+    [ ! -d "$target" ]
+}
+
+@test "update.sh --version prints the version and performs no side effects" {
+    local stub="${BATS_TEST_TMPDIR}/gitstub2"
+    mkdir -p "$stub"
+    : >"$stub/calls.log"
+    printf '#!/usr/bin/env bash\necho "git $*" >> "%s/calls.log"\nexit 0\n' \
+        "$stub/calls.log" >"${stub}/git"
+    chmod +x "${stub}/git"
+
+    local target="${BATS_TEST_TMPDIR}/never-installed-2"
+
+    run env PATH="${stub}:${PATH}" INSTALL_DIR="$target" \
+        bash "${SCRIPTS_DIR}/update.sh" --version
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"update.sh"* ]]
+
+    [ ! -s "$stub/calls.log" ]
+    [ ! -d "$target" ]
+}
+
+@test "update.sh rejects an unknown option with a usage error" {
+    run bash "${SCRIPTS_DIR}/update.sh" --definitely-not-an-option
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Usage:"* ]]
+}

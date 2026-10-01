@@ -30,7 +30,59 @@ source "${SCRIPT_DIR}/lib/colors.sh"
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/errors.sh"
+
+usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+Update the local repository, reinstall framework utilities,
+and verify the installation.
+
+Options:
+  -h, --help       Show this help and exit
+  -v, --version    Show version and exit
+
+Environment Variables:
+  INSTALL_DIR      Installation directory (required, from config)
+  ENABLE_DOCTOR    Run the health check afterwards (default: true)
+  LOG_LEVEL        Log verbosity (0=error, 1=warn, 2=info, 3=debug)
+  LOG_FORMAT       Log format (simple, json, timestamped)
+EOF
+}
+
+# Parsed before any work, so -h/-v never trigger a git pull or a reinstall.
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h | --help)
+                usage
+                exit 0
+                ;;
+            -v | --version)
+                local version_file
+                version_file="$(dirname "$0")/../VERSION"
+                if [[ -f "$version_file" ]]; then
+                    echo "$(basename "$0") $(cat "$version_file")"
+                else
+                    echo "$(basename "$0") unknown (VERSION file not found)" >&2
+                    exit 1
+                fi
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                usage >&2
+                exit "$EX_USAGE"
+                ;;
+        esac
+    done
+}
+
 main() {
+    parse_args "$@"
+
     echo
     echo "========================================="
     echo " Developer Workstation Updater"

@@ -69,7 +69,7 @@ parse_args() {
 
     if [[ $# -ne 1 ]]; then
         usage >&2
-        die EX_USAGE "Exactly one script argument required"
+        die "$EX_USAGE" "Exactly one script argument required"
     fi
 }
 
@@ -79,7 +79,7 @@ main() {
     readonly SCRIPT="$1"
 
     if [[ ! -f "$SCRIPT" ]]; then
-        die EX_NOINPUT "File not found: $SCRIPT"
+        die "$EX_NOINPUT" "File not found: $SCRIPT"
     fi
 
     echo

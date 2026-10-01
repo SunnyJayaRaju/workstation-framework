@@ -110,7 +110,7 @@ parse_args() {
                 exit 0
                 ;;
             *)
-                die EX_USAGE "Unknown option: $1"
+                die "$EX_USAGE" "Unknown option: $1"
                 ;;
         esac
     done
@@ -185,6 +185,11 @@ main() {
     remove_utility "restore.sh"
     remove_utility "shell-quality.sh"
     remove_utility "sync.sh"
+    # This deletes the script that is currently executing. That is safe on
+    # macOS/Linux purely because unlink(2) keeps the inode alive while any
+    # open file descriptor refers to it, so bash can keep reading the already
+    # unlinked file to the end. Do NOT "fix" this by reordering or by skipping
+    # uninstall.sh - either change breaks the script mid-run.
     remove_utility "uninstall.sh"
     remove_utility "update.sh"
 

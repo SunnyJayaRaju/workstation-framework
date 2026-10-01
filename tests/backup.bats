@@ -136,3 +136,19 @@ teardown() {
     run grep -q '^ENABLE_CLEANUP=' "${PROJECT_ROOT}/config/default.conf"
     [ "$status" -eq 0 ]
 }
+
+# --- FIX 4 (M16): a missing source fails clearly, others still back up --
+
+@test "backup.sh fails clearly for a source that does not exist" {
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc .does-not-exist" \
+        bash "${SCRIPTS_DIR}/backup.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Source file not found"* ]]
+    [[ "$output" == *"does-not-exist"* ]]
+    [[ "$output" != *"Backup completed successfully"* ]]
+
+    # the source that DID exist was still backed up
+    [ -n "$(find "$BACKUP_DIR" -name '.zshrc_*')" ]
+    [ -z "$(find "$BACKUP_DIR" -name '.does-not-exist_*')" ]
+}
