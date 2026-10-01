@@ -26,10 +26,15 @@ require_var BACKUP_DIR "$EX_CONFIG"
 readonly BACKUP_DIR
 
 # Configurable backup sources - must match backup.sh
-IFS=' ' read -r -a BACKUP_SOURCES <<<"${BACKUP_SOURCES:-${HOME}/.zshrc ${HOME}/.gitconfig ${HOME}/.ssh/config}"
+# (parsed below, once the shared helper has been sourced)
 
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
+
+# shellcheck source=lib/backup_paths.sh
+source "${SCRIPT_DIR}/lib/backup_paths.sh"
+
+parse_backup_sources
 
 DRY_RUN=false
 
@@ -95,30 +100,41 @@ resolve_source_path() {
     echo "$source"
 }
 
+# Newest backup for a source. Prefers the current naming scheme and falls
+# back to the legacy bare-basename scheme, so backups taken before that
+# change remain restorable rather than silently orphaned.
+find_latest_backup() {
+    local source="$1"
+    local backup_dir="$2"
+
+    local key basename_key
+    key="$(backup_key "$source")"
+    basename_key="$(basename "$source")"
+
+    # find with quoted -name patterns: a glob loop would word-split on the
+    # space in a path such as "my notes". Read line-wise so filenames with
+    # spaces survive, and no nullglob handling is needed.
+    local -a found=()
+    local match
+    while IFS= read -r match; do
+        [[ -n "$match" ]] && found+=("$match")
+    done < <(find "$backup_dir" -maxdepth 1 -type f \
+        \( -name "${key}_*" -o -name "${basename_key}_*" \) 2>/dev/null | sort)
+
+    [[ ${#found[@]} -eq 0 ]] && return 1
+
+    # shellcheck disable=SC2012
+    ls -t "${found[@]}" 2>/dev/null | head -n1
+}
+
 restore_latest_backup() {
     local source="$1"
     local backup_dir="$2"
 
     source="$(resolve_source_path "$source")"
 
-    local basename
-    basename="$(basename "$source")"
-
-    local latest_backup=""
-
-    # Find the latest backup by modification time (portable)
-    # Use ls -t which works on both macOS and Linux
-    # shellcheck disable=SC2012
-    local files
-    files=("${backup_dir}/${basename}_"*)
-    if [[ ${#files[@]} -eq 1 && ! -e "${files[0]}" ]]; then
-        # Nullglob case - no matches
-        files=()
-    fi
-    if [[ ${#files[@]} -gt 0 ]]; then
-        # shellcheck disable=SC2012
-        latest_backup=$(ls -t "${files[@]}" 2>/dev/null | head -n1)
-    fi
+    local latest_backup
+    latest_backup="$(find_latest_backup "$source" "$backup_dir")"
 
     if [[ -z "$latest_backup" ]]; then
         log_fail "No backup found for: ${source}"
