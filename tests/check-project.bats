@@ -114,3 +114,137 @@ load test_helper
     run make syntax
     [ "$status" -eq 0 ]
 }
+
+# --- FIX 1 (L4): no eval-based assert helper ---------------------------
+
+@test "errors.sh contains no eval and no assert helper" {
+    run grep -c 'eval' "${SCRIPTS_DIR}/lib/errors.sh"
+    [ "$output" = "0" ]
+
+    run grep -c 'assert()' "${SCRIPTS_DIR}/lib/errors.sh"
+    [ "$output" = "0" ]
+}
+
+# --- FIX 2 (L3/L4): mandated helpers are actually used -----------------
+
+@test "sync.sh wraps its network call in retry" {
+    run grep -q 'retry' "${SCRIPTS_DIR}/sync.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "command-availability checks use the shared helpers, not raw command -v" {
+    # Where aborting is correct, the terminating helper is used.
+    run grep -q 'require_command git' "${SCRIPTS_DIR}/sync.sh"
+    [ "$status" -eq 0 ]
+
+    # Where the script must warn and continue, the predicate is used instead --
+    # require_command here would turn a missing linter into a failed run.
+    run grep -q 'check_command_exists' "${SCRIPTS_DIR}/shell-quality.sh"
+    [ "$status" -eq 0 ]
+
+    run grep -q 'check_command_exists' "${SCRIPTS_DIR}/lib/secrets.sh"
+    [ "$status" -eq 0 ]
+
+    # and none of them hand-roll it any more
+    # a single total across both files; grep -c prints per-file counts
+    run bash -c "cat '${SCRIPTS_DIR}/shell-quality.sh' '${SCRIPTS_DIR}/lib/secrets.sh' \
+        | grep -c 'command -v' || true"
+    [ "$output" = "0" ]
+}
+
+# --- FIX 4 (L10): sync.sh is honest about pruning and network failure ---
+
+@test "sync.sh documents that it prunes remote-tracking refs" {
+    run bash "${SCRIPTS_DIR}/sync.sh" --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"--prune"* ]]
+}
+
+@test "sync.sh reports a clear message when the remote is unreachable" {
+    local framework_repo="${BATS_TEST_TMPDIR}/sync-offline"
+    mkdir -p "$framework_repo"
+    cp -R "${SCRIPTS_DIR}" "${framework_repo}/scripts"
+    cp -R "${PROJECT_ROOT}/config" "${framework_repo}/config"
+    git init --quiet "$framework_repo"
+    git -C "$framework_repo" symbolic-ref HEAD refs/heads/main
+    git -C "$framework_repo" config user.email "t@example.com"
+    git -C "$framework_repo" config user.name "T"
+    git -C "$framework_repo" add -A
+    git -C "$framework_repo" commit --quiet -m snapshot
+    # an origin that cannot be reached
+    git -C "$framework_repo" remote add origin "file:///nonexistent/definitely-not-here.git"
+
+    run bash "${framework_repo}/scripts/sync.sh"
+
+    [ "$status" -ne 0 ]
+    # must name the failure in our own words, not just leak git's stderr
+    [[ "$output" == *"could not reach"* ]]
+    [[ "$output" == *"origin"* ]]
+}
+
+# --- FIX 3 (L6/L7): explicit pass/fail and wider coverage --------------
+
+# A throwaway project that looks like the real one, minus one thing.
+make_project_missing() {
+    local missing="$1"
+    PROJ="${BATS_TEST_TMPDIR}/proj-missing-${missing//\//_}"
+    mkdir -p "${PROJ}/.git" "${PROJ}/.vscode" "${PROJ}/docs" \
+        "${PROJ}/scripts" "${PROJ}/scripts/lib" "${PROJ}/templates" \
+        "${PROJ}/tests" "${PROJ}/assets" "${PROJ}/config"
+    cp -R "${SCRIPTS_DIR}/." "${PROJ}/scripts/"
+    cp "${PROJECT_ROOT}/README.md" "${PROJ}/README.md"
+    cp "${PROJECT_ROOT}/.gitignore" "${PROJ}/.gitignore"
+    cp "${PROJECT_ROOT}/.editorconfig" "${PROJ}/.editorconfig"
+    cp "${PROJECT_ROOT}/VERSION" "${PROJ}/VERSION"
+    cp "${PROJECT_ROOT}/Makefile" "${PROJ}/Makefile"
+    cp "${PROJECT_ROOT}/config/default.conf" "${PROJ}/config/default.conf"
+    rm -rf "${PROJ}/${missing}"
+}
+
+@test "check-project.sh reports a specific failure for a missing VERSION" {
+    make_project_missing "VERSION"
+
+    run bash "${PROJ}/scripts/check-project.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"VERSION"* ]]
+    [[ "$output" != *"Repository structure verified."* ]]
+}
+
+@test "check-project.sh reports a specific failure for a missing Makefile" {
+    make_project_missing "Makefile"
+
+    run bash "${PROJ}/scripts/check-project.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Makefile"* ]]
+    [[ "$output" != *"Repository structure verified."* ]]
+}
+
+@test "check-project.sh reports a specific failure for a missing config" {
+    make_project_missing "config"
+
+    run bash "${PROJ}/scripts/check-project.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"config"* ]]
+    [[ "$output" != *"Repository structure verified."* ]]
+}
+
+@test "check-project.sh succeeds explicitly on a complete project" {
+    make_project_missing "nothing-missing"
+
+    run bash "${PROJ}/scripts/check-project.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository structure verified."* ]]
+}
+
+@test "check-project.sh checks VERSION, config, Makefile and the utilities" {
+    run grep -q 'VERSION' "${SCRIPTS_DIR}/check-project.sh"
+    [ "$status" -eq 0 ]
+    run grep -q 'Makefile' "${SCRIPTS_DIR}/check-project.sh"
+    [ "$status" -eq 0 ]
+    run grep -q 'config' "${SCRIPTS_DIR}/check-project.sh"
+    [ "$status" -eq 0 ]
+}

@@ -152,3 +152,121 @@ load test_helper
     run json_escape $'line1\nline2'
     [ "$output" = 'line1\nline2' ]
 }
+
+# --- FIX 5: direct tests for the config parser (M16) -------------------
+# config.sh is the security control that keeps INSTALL_DIR/BACKUP_DIR safe:
+# it parses KEY=VALUE instead of sourcing the file. These are its first
+# direct tests, and each hostile case also asserts the value WAS read as
+# literal text, so the test cannot pass merely because loading failed.
+
+# A standalone copy of config.sh with its own config dir, so the real
+# repository config cannot satisfy it. CONFIG_DIR resolves to
+# <base>/a/config because config.sh is at <base>/a/b/lib/config.sh.
+standalone_config() {
+    local base="${BATS_TEST_TMPDIR}/cfg-$1"
+    mkdir -p "${base}/a/b/lib" "${base}/a/config"
+    cp "${SCRIPTS_DIR}/lib/config.sh" "${base}/a/b/lib/config.sh"
+    cp "${SCRIPTS_DIR}/lib/logging.sh" "${base}/a/b/lib/logging.sh"
+    printf '%s' "${base}"
+}
+
+load_key() {
+    # load_key <config.sh path> <KEY>
+    env HOME="$BATS_TEST_TMPDIR/nohome" bash -c \
+        "source '$1'; load_config; printf '%s' \"\${$2}\""
+}
+
+@test "config parser strips surrounding quotes from values" {
+    local base
+    base="$(standalone_config strip-quotes)"
+    printf 'SOMEKEY="quoted value"\n' >"${base}/a/config/default.conf"
+
+    run --separate-stderr load_key "${base}/a/b/lib/config.sh" SOMEKEY
+    [ "$status" -eq 0 ]
+    [ "$output" = "quoted value" ]
+}
+
+@test "config parser expands $HOME in values" {
+    local base
+    base="$(standalone_config expand-home)"
+    printf 'SOMEKEY="$HOME/thing"\n' >"${base}/a/config/default.conf"
+
+    run --separate-stderr load_key "${base}/a/b/lib/config.sh" SOMEKEY
+    [ "$status" -eq 0 ]
+    [ "$output" = "$BATS_TEST_TMPDIR/nohome/thing" ]
+}
+
+@test "config parser reads command substitution as literal text, never executing it" {
+    local base canary
+    base="$(standalone_config no-subst)"
+    canary="${BATS_TEST_TMPDIR}/pwned-marker"
+    printf 'SOMEKEY="$(touch %s)"\n' "$canary" >"${base}/a/config/default.conf"
+
+    run --separate-stderr load_key "${base}/a/b/lib/config.sh" SOMEKEY
+
+    # not executed
+    [ ! -e "$canary" ]
+    # but genuinely parsed: the raw text came through unchanged
+    [ "$output" = "\$(touch $canary)" ]
+}
+
+@test "config parser reads backticks as literal text, never executing them" {
+    local base canary
+    base="$(standalone_config no-backtick)"
+    canary="${BATS_TEST_TMPDIR}/pwned-backtick"
+    printf 'SOMEKEY="`touch %s`"\n' "$canary" >"${base}/a/config/default.conf"
+
+    run --separate-stderr load_key "${base}/a/b/lib/config.sh" SOMEKEY
+
+    [ ! -e "$canary" ]
+    [ "$output" = "\`touch $canary\`" ]
+}
+
+@test "config parser treats semicolons as literal text, not command separators" {
+    local base canary
+    base="$(standalone_config no-semicolon)"
+    canary="${BATS_TEST_TMPDIR}/pwned-semicolon"
+    printf 'SOMEKEY="x; touch %s"\n' "$canary" >"${base}/a/config/default.conf"
+
+    run --separate-stderr load_key "${base}/a/b/lib/config.sh" SOMEKEY
+
+    [ ! -e "$canary" ]
+    [ "$output" = "x; touch $canary" ]
+}
+
+@test "config parser skips lines that are not KEY=VALUE and keeps parsing" {
+    local base canary
+    base="$(standalone_config bad-key)"
+    canary="${BATS_TEST_TMPDIR}/pwned-badkey"
+    {
+        printf 'rm -rf %s\n' "$canary"
+        printf 'GOODKEY="still-parsed"\n'
+    } >"${base}/a/config/default.conf"
+
+    run --separate-stderr load_key "${base}/a/b/lib/config.sh" GOODKEY
+
+    # the malformed line was ignored entirely
+    [ ! -e "$canary" ]
+    # positive control: parsing continued to the next valid line
+    [ "$output" = "still-parsed" ]
+}
+
+@test "safe_expand substitutes known variables only" {
+    run env MYVAR=hello bash -c \
+        "source '${SCRIPTS_DIR}/lib/config.sh'; safe_expand 'v=\$MYVAR'"
+    [[ "$output" == *"v=hello"* ]]
+
+    run env bash -c \
+        "source '${SCRIPTS_DIR}/lib/config.sh'; safe_expand 'v=\${NOPE_UNDEFINED}'"
+    [[ "$output" == *"v="* ]]
+}
+
+@test "environment variables take precedence over config values" {
+    local base
+    base="$(standalone_config precedence)"
+    printf 'PRECEDENCE="from-config"\n' >"${base}/a/config/default.conf"
+
+    run --separate-stderr env PRECEDENCE="from-env" HOME="$BATS_TEST_TMPDIR/nohome" bash -c \
+        "source '${base}/a/b/lib/config.sh'; load_config; printf '%s' \"\$PRECEDENCE\""
+    [ "$output" = "from-env" ]
+}

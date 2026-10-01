@@ -41,6 +41,10 @@ and its upstream remote.
 Options:
   -h, --help       Show this help and exit
   -v, --version    Show version and exit
+
+The fetch uses 'git fetch --prune', so remote-tracking refs for branches
+that no longer exist on the remote are removed. The fetch is retried a few
+times before it is reported as a failure.
 EOF
 }
 
@@ -106,10 +110,9 @@ main() {
     echo "========================================="
     echo
 
-    if ! command -v git >/dev/null 2>&1; then
-        log_fail "Git is not installed."
-        exit 69
-    fi
+    # require_command exits with EX_UNAVAILABLE (69), the same code this
+    # script has always used for a missing git.
+    require_command git
 
     if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         log_fail "Not a Git repository: ${REPO_ROOT}"
@@ -143,7 +146,14 @@ main() {
 
     log_info "Fetching latest remote information from ${remote}..."
 
-    git -C "$REPO_ROOT" fetch --prune "${remote}"
+    # A flaky network is common and usually resolves on a second attempt, so
+    # the fetch is bounded rather than treated as a hard failure on the first.
+    if ! retry 3 2 git -C "$REPO_ROOT" fetch --prune "${remote}"; then
+        log_fail "could not reach remote '${remote}' after 3 attempts"
+        echo "Check your connection, then confirm the remote URL:"
+        echo "  git -C \"${REPO_ROOT}\" remote get-url ${remote}"
+        exit "$EX_UNAVAILABLE"
+    fi
 
     echo
 

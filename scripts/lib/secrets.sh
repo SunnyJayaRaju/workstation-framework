@@ -28,21 +28,24 @@ fi
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/errors.sh"
 
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/checks.sh"
+
 # Check if 1Password CLI is available
 has_op_cli() {
-    command -v op >/dev/null 2>&1
+    check_command_exists op
 }
 
 # Check if jq is available. The 1Password read path parses `op` JSON with jq,
 # so a missing jq would otherwise fail silently and fall through to a
 # different backend, returning a different secret than the caller asked for.
 has_jq() {
-    command -v jq >/dev/null 2>&1
+    check_command_exists jq
 }
 
 # Check if macOS Keychain is available
 has_keychain() {
-    command -v security >/dev/null 2>&1
+    check_command_exists security
 }
 
 # Get secret from 1Password

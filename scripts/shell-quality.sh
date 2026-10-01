@@ -22,6 +22,9 @@ source "${SCRIPT_DIR}/lib/errors.sh"
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/checks.sh"
+
 usage() {
     cat <<EOF
 Usage: $0 [OPTIONS] <shell-script>
@@ -101,7 +104,7 @@ main() {
 
     if [[ "${ENABLE_SHELLCHECK:-true}" == "true" ]]; then
         echo
-        if ! command -v shellcheck >/dev/null 2>&1; then
+        if ! check_command_exists shellcheck; then
             # An absent tool is an incomplete environment, not a code-quality
             # finding. Reported distinctly so it is never read as a lint
             # failure; FAILED is left alone so the verdict is not corrupted.
@@ -129,7 +132,7 @@ main() {
 
     if [[ "${ENABLE_SHFMT:-true}" == "true" ]]; then
         echo
-        if ! command -v shfmt >/dev/null 2>&1; then
+        if ! check_command_exists shfmt; then
             log_warn "shfmt not installed - skipping formatting check"
             MISSING_TOOL=true
         else
