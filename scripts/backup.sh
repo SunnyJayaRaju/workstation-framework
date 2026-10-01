@@ -25,9 +25,8 @@ require_var BACKUP_DIR "$EX_CONFIG"
 
 readonly BACKUP_DIR
 
-# Configurable backup sources - can be overridden via BACKUP_SOURCES env var
-# Format: space-separated list of paths (relative to HOME or absolute)
-IFS=' ' read -r -a BACKUP_SOURCES <<<"${BACKUP_SOURCES:-${HOME}/.zshrc ${HOME}/.gitconfig ${HOME}/.ssh/config}"
+# Configurable backup sources - can be overridden via BACKUP_SOURCES env var.
+# Parsed below, once the shared helper has been sourced.
 
 TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
 readonly TIMESTAMP
@@ -37,6 +36,11 @@ source "${SCRIPT_DIR}/lib/logging.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/filesystem.sh"
+
+# shellcheck source=lib/backup_paths.sh
+source "${SCRIPT_DIR}/lib/backup_paths.sh"
+
+parse_backup_sources
 
 usage() {
     cat <<EOF
@@ -90,24 +94,48 @@ backup_file() {
     local dest_dir="$2"
     local timestamp="$3"
 
-    # Expand tilde and relative paths
-    if [[ "$source" != /* ]]; then
-        source="${HOME}/${source}"
-    fi
-    source="${source/#\~/$HOME}"
+    source="$(expand_source_path "$source")"
 
-    local basename
-    basename="$(basename "$source")"
-    local destination="${dest_dir}/${basename}_${timestamp}"
+    local key
+    key="$(backup_key "$source")"
+    local destination="${dest_dir}/${key}_${timestamp}"
 
     if [[ ! -f "$source" ]]; then
         log_fail "Source file not found: ${source}"
         return 1
     fi
 
-    cp -p "$source" "$destination"
-    chmod 600 "$destination"
+    # `install -m 600` creates the destination with restrictive permissions
+    # and writes the content in one step. The previous `cp -p` + `chmod 600`
+    # left a window where a copy of ~/.ssh/config or ~/.gitconfig existed at
+    # the source's (often 644) mode.
+    if ! install -m 600 "$source" "$destination"; then
+        log_fail "Failed to back up: ${source}"
+        return 1
+    fi
+
     log_pass "Backed up: ${source} -> ${destination}"
+}
+
+# BACKUP_SOURCES is space-separated, which cannot express a path containing a
+# space. Newline-separated listings are supported as an alternative; within the
+# space-separated form, warn when a token is missing but token+next exists,
+# which is the signature of one path having been split in two.
+warn_if_split_source() {
+    local i last
+    last=$((${#BACKUP_SOURCES[@]} - 1))
+
+    for ((i = 0; i < last; i++)); do
+        local token="${BACKUP_SOURCES[$i]}"
+        local pair="${token} ${BACKUP_SOURCES[$((i + 1))]}"
+
+        if [[ ! -f "$(expand_source_path "$token")" ]] &&
+            [[ -f "$(expand_source_path "$pair")" ]]; then
+            log_warn "BACKUP_SOURCES entry '${token}' does not exist, but '${pair}' does."
+            log_warn "This entry looks like a path containing a space that was split."
+            log_warn "List sources one per line (newline-separated) to include such paths."
+        fi
+    done
 }
 
 main() {
@@ -127,6 +155,8 @@ main() {
     log_info "Preparing backup..."
 
     ensure_directory "${BACKUP_DIR}"
+
+    warn_if_split_source
 
     local failed=0
     local source
