@@ -54,9 +54,12 @@ validate_install_dir() {
         die "$EX_CONFIG" "INSTALL_DIR resolves to filesystem root, refusing to continue: ${dir}"
     fi
 
-    # Count path separators; fewer than 2 means "/" or "/top-level-dir"
+    # Count path separators. Fewer than 3 means "/" or a top-level directory
+    # such as "/usr" or "/usr/local"; rm -rf against those is never intended.
+    # Realistic install paths such as $HOME/.local/bin and /opt/ws/bin have
+    # 3 or more separators and remain valid.
     local slashes="${resolved//[^\/]/}"
-    if ((${#slashes} < 2)); then
+    if ((${#slashes} < 3)); then
         die "$EX_CONFIG" "INSTALL_DIR is too shallow (refusing top-level directory): ${dir}"
     fi
 }

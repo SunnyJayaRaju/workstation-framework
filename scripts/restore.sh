@@ -49,6 +49,11 @@ Environment Variables:
   BACKUP_SOURCES   Space-separated list of files to restore (default: .zshrc .gitconfig .ssh/config)
   LOG_LEVEL        Log verbosity (0=error, 1=warn, 2=info, 3=debug)
   LOG_FORMAT       Log format (simple, json, timestamped)
+
+Notes:
+  Before overwriting an existing file, restore.sh saves it alongside as
+  <file>.restore-safety-<timestamp>. These safety copies are never pruned
+  automatically; remove them yourself when you no longer need them.
 EOF
 }
 
@@ -132,6 +137,14 @@ restore_latest_backup() {
     if [[ -f "$source" ]]; then
         local safety
         safety="${source}.restore-safety-$(date +%Y%m%d%H%M%S)"
+
+        # The safety name is predictable. Fail closed rather than write
+        # through a symlink someone else planted at that path.
+        if [[ -L "$safety" ]]; then
+            log_fail "Safety copy path is a symlink, refusing to continue: ${safety}"
+            return 1
+        fi
+
         if ! cp -p "$source" "$safety"; then
             log_fail "Failed to preserve current file: ${source}"
             return 1

@@ -109,8 +109,29 @@ teardown() {
 }
 
 @test "update.sh runs install and doctor when on a branch" {
-    # This test simulates update.sh behavior in a git repo
-    run bash "${SCRIPTS_DIR}/update.sh"
+    # Hermetic: build a throwaway framework repo with a known tracking branch.
+    # The previous version ran update.sh against whatever branch the suite
+    # happened to be invoked from, so it only passed because that branch had
+    # an upstream configured.
+    local framework_repo="${BATS_TEST_TMPDIR}/integration-framework"
+    local bare_origin="${BATS_TEST_TMPDIR}/integration-origin.git"
+
+    git init --quiet --bare "$bare_origin"
+
+    mkdir -p "$framework_repo"
+    cp -R "${SCRIPTS_DIR}" "${framework_repo}/scripts"
+    cp -R "${PROJECT_ROOT}/config" "${framework_repo}/config"
+    cp "${PROJECT_ROOT}/VERSION" "${framework_repo}/VERSION"
+    git init --quiet "$framework_repo"
+    git -C "$framework_repo" symbolic-ref HEAD refs/heads/main
+    git -C "$framework_repo" config user.email "test@example.com"
+    git -C "$framework_repo" config user.name "Test"
+    git -C "$framework_repo" add -A
+    git -C "$framework_repo" commit --quiet -m "framework snapshot"
+    git -C "$framework_repo" remote add origin "file://${bare_origin}"
+    git -C "$framework_repo" push --quiet -u origin main
+
+    run bash "${framework_repo}/scripts/update.sh"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Framework updated successfully."* ]]
 }

@@ -73,6 +73,13 @@ store_secret_op() {
         die EX_UNAVAILABLE "1Password CLI (op) not found"
     fi
 
+    # KNOWN EXPOSURE: the secret is passed in argv ("$field_name=$value"), so
+    # it is visible in the process table (ps -ef) to any local user for the
+    # lifetime of this call. `op item create` is invoked here for its
+    # documented create semantics and offers no stdin/argv-free form for this
+    # subcommand that could be used without breaking this function's
+    # interface, so the exposure is documented rather than engineered away.
+    # Prefer a wrapper that does not take secrets on the command line.
     local args=("item" "create" "--category" "Secure Note" "--title" "$item_name" "$field_name=$value")
     if [[ -n "$vault_name" ]]; then
         args+=("--vault" "$vault_name")
@@ -105,6 +112,18 @@ store_secret_keychain() {
         die EX_UNAVAILABLE "macOS security command not found"
     fi
 
+    # KNOWN EXPOSURE: the secret is passed in argv (-w "$value"), so it is
+    # visible in the process table (ps -ef) to any local user for the lifetime
+    # of this call. Verified against `security add-generic-password -h`:
+    #   -w/--password, -p and -X all take the value in argv, and Apple's own
+    #     usage text calls that "insecure";
+    #   - `-w` as the final option with no value prompts interactively, which
+    #     requires a TTY and so is not usable from a script;
+    #   - `security -i` does NOT read the password from stdin (it consumes the
+    #     next token as the value).
+    # There is therefore no argv-free non-interactive form for this
+    # subcommand, and none is faked here. Prefer an interactive `security -w`
+    # prompt, or a secret manager with a proper API, for high-value secrets.
     security add-generic-password -s "$service" -a "$account" -w "$value" -U 2>/dev/null
 }
 

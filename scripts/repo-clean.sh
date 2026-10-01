@@ -109,7 +109,9 @@ delete_files() {
         if [[ "$DRY_RUN" == false ]]; then
             rm -f "$file"
         fi
-        ((count++))
+        # Not ((count++)): that returns 1 when the expression evaluates to 0
+        # (i.e. on the first file), which is a failing command under `set -e`.
+        count=$((count + 1))
     done
 
     echo "$count"
