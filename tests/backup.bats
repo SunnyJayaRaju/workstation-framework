@@ -109,3 +109,30 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" == "# test zshrc" ]]
 }
+# --- FIX 3: ENABLE_BACKUP is honoured (M10) ------------------------------
+
+@test "backup.sh skips cleanly when ENABLE_BACKUP=false" {
+    run env ENABLE_BACKUP=false BACKUP_DIR="$BACKUP_DIR" \
+        BACKUP_SOURCES=".zshrc" bash "${SCRIPTS_DIR}/backup.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"disabled"* ]]
+
+    # nothing was written
+    [ -z "$(find "$BACKUP_DIR" -name '.zshrc_*')" ]
+}
+
+@test "backup.sh runs when ENABLE_BACKUP is not set" {
+    run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" \
+        bash "${SCRIPTS_DIR}/backup.sh"
+
+    [ "$status" -eq 0 ]
+    [ -n "$(find "$BACKUP_DIR" -name '.zshrc_*')" ]
+}
+
+@test "default.conf declares ENABLE_BACKUP and ENABLE_CLEANUP" {
+    run grep -q '^ENABLE_BACKUP=' "${PROJECT_ROOT}/config/default.conf"
+    [ "$status" -eq 0 ]
+    run grep -q '^ENABLE_CLEANUP=' "${PROJECT_ROOT}/config/default.conf"
+    [ "$status" -eq 0 ]
+}
