@@ -46,18 +46,40 @@ stub_rm() {
     stub_rm
 
     run env INSTALL_DIR=/ PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
-    [ "$status" -ne 0 ]
+    [ "$status" -eq 78 ]
     [[ "$output" == *"INSTALL_DIR"* ]]
 
     # No rm was even reached, so nothing could have been deleted
     [ ! -s "$RM_STUB_LOG" ]
 }
 
+@test "uninstall.sh refuses INSTALL_DIR=// and attempts no deletions" {
+    stub_rm
+
+    # "//" is still the filesystem root; a bare `== "/"` test misses it
+    run env INSTALL_DIR=// PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
+    [ "$status" -eq 78 ]
+    [[ "$output" == *"refusing to continue"* ]]
+
+    [ ! -s "$RM_STUB_LOG" ]
+}
+
+@test "uninstall.sh rejects report EX_CONFIG, not a shell error" {
+    stub_rm
+
+    run env INSTALL_DIR=/ PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
+
+    # die must receive "$EX_CONFIG"; a bare EX_CONFIG makes bash exit 2 with
+    # "numeric argument required" on stderr (regression of the 2.1.0 fix)
+    [[ "$output" != *"numeric argument required"* ]]
+    [[ "$output" != *"Error (EX_CONFIG)"* ]]
+}
+
 @test "uninstall.sh refuses a top-level INSTALL_DIR" {
     stub_rm
 
     run env INSTALL_DIR=/usr PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
-    [ "$status" -ne 0 ]
+    [ "$status" -eq 78 ]
     [[ "$output" == *"too shallow"* ]]
     [ ! -s "$RM_STUB_LOG" ]
 }
@@ -67,7 +89,7 @@ stub_rm() {
 
     run env INSTALL_DIR=relative/path PATH="$STUB_PATH" bash \
         "${SCRIPTS_DIR}/uninstall.sh"
-    [ "$status" -ne 0 ]
+    [ "$status" -eq 78 ]
     [[ "$output" == *"must be an absolute path"* ]]
     [ ! -s "$RM_STUB_LOG" ]
 }

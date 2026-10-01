@@ -41,21 +41,23 @@ validate_install_dir() {
     local dir="$1"
 
     if [[ "$dir" != /* ]]; then
-        die EX_CONFIG "INSTALL_DIR must be an absolute path: ${dir}"
+        die "$EX_CONFIG" "INSTALL_DIR must be an absolute path: ${dir}"
     fi
 
     # Resolve symlinks where possible; fall back to the literal path
     local resolved
     resolved="$(cd "$dir" 2>/dev/null && pwd)" || resolved="$dir"
 
-    if [[ "$resolved" == "/" ]]; then
-        die EX_CONFIG "INSTALL_DIR resolves to filesystem root, refusing to continue: ${dir}"
+    # Any path made only of slashes is the filesystem root. A bare equality
+    # test against "/" misses "//" and "///", which some systems preserve.
+    if [[ "$resolved" =~ ^/+$ ]]; then
+        die "$EX_CONFIG" "INSTALL_DIR resolves to filesystem root, refusing to continue: ${dir}"
     fi
 
     # Count path separators; fewer than 2 means "/" or "/top-level-dir"
     local slashes="${resolved//[^\/]/}"
     if ((${#slashes} < 2)); then
-        die EX_CONFIG "INSTALL_DIR is too shallow (refusing top-level directory): ${dir}"
+        die "$EX_CONFIG" "INSTALL_DIR is too shallow (refusing top-level directory): ${dir}"
     fi
 }
 
