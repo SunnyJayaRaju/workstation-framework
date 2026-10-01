@@ -126,3 +126,22 @@ link_stub() {
     run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/docs/ARCHITECTURE.md"
     [ "$status" -eq 0 ]
 }
+# --- FIX 2: the load guard must not leak into child environments ---------
+
+@test "secrets.sh defines its functions in a child shell" {
+    source "${SCRIPTS_DIR}/lib/secrets.sh"
+
+    # A child inheriting the environment must NOT take the "already loaded"
+    # early-return path and end up with no functions at all.
+    run env bash -c \
+        "source '${SCRIPTS_DIR}/lib/secrets.sh'; declare -F get_secret >/dev/null && echo DEFINED || echo MISSING"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"DEFINED"* ]]
+}
+
+@test "secrets.sh does not export its load guard" {
+    source "${SCRIPTS_DIR}/lib/secrets.sh"
+
+    run env bash -c 'echo "guard=[${SECRETS_LOADED:-unset}]"'
+    [[ "$output" == *"guard=[unset]"* ]]
+}

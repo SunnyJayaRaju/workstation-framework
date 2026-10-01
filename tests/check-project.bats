@@ -30,3 +30,47 @@ load test_helper
     
     rm -rf "$temp_dir"
 }
+# --- FIX 1: CI tool versions are pinned, and the docs say so -------------
+
+@test "quality.yml pins exact shellcheck, shfmt and bats versions" {
+    local workflow="${PROJECT_ROOT}/.github/workflows/quality.yml"
+
+    # Ubuntu side: exact apt versions
+    run grep -q 'shellcheck=0\.9\.0-1' "$workflow"
+    [ "$status" -eq 0 ]
+    run grep -q 'shfmt=3\.8\.0-1' "$workflow"
+    [ "$status" -eq 0 ]
+    run grep -q 'bats=1\.10\.0-1' "$workflow"
+    [ "$status" -eq 0 ]
+
+    # No bare, unpinned installs may remain
+    run grep -qE 'apt-get install -y (shellcheck|shfmt|bats)( |$)' "$workflow"
+    [ "$status" -ne 0 ]
+}
+
+@test "SHELL_CODING_STANDARDS.md states the actual pinned versions" {
+    local standards="${PROJECT_ROOT}/docs/SHELL_CODING_STANDARDS.md"
+
+    run grep -q '0\.9\.0-1' "$standards"
+    [ "$status" -eq 0 ]
+    run grep -q '3\.8\.0-1' "$standards"
+    [ "$status" -eq 0 ]
+    run grep -q '1\.10\.0-1' "$standards"
+    [ "$status" -eq 0 ]
+
+    # the old unproven claim must be gone
+    run grep -q 'Latest stable' "$standards"
+    [ "$status" -ne 0 ]
+}
+
+# --- FIX 3: the broken, unused prelude.sh is removed ----------------------
+
+@test "the broken prelude.sh library has been removed" {
+    [ ! -f "${SCRIPTS_DIR}/lib/prelude.sh" ]
+}
+
+@test "no documentation presents prelude.sh as available" {
+    run grep -rn 'prelude' \
+        "${PROJECT_ROOT}/docs/ARCHITECTURE.md" "${PROJECT_ROOT}/README.md"
+    [ "$status" -ne 0 ]
+}

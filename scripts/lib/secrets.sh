@@ -18,8 +18,6 @@
 if [[ -n "${SECRETS_LOADED:-}" ]]; then
     return 0
 fi
-readonly SECRETS_LOADED=1
-
 # Determine SCRIPT_DIR (the scripts/ directory) if not already set correctly
 if [[ -z "${SCRIPT_DIR:-}" ]] || [[ ! -f "${SCRIPT_DIR}/lib/errors.sh" ]]; then
     # Find scripts/ directory relative to this file's location
@@ -215,4 +213,7 @@ list_secrets() {
     fi
 }
 
-export SECRETS_LOADED
+# Deliberately NOT exported. An exported guard is inherited by child shells,
+# so any child that sources this file takes the "already loaded" early-return
+# above and ends up with NONE of these functions defined, silently.
+readonly SECRETS_LOADED=1
