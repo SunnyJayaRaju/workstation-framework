@@ -44,12 +44,20 @@ main() {
 
     # git pull requires an attached branch; skip gracefully on detached HEAD
     # (typical in CI checkouts) — install + doctor below still run fully.
-    if [[ -n "$(git -C "$REPO_ROOT" branch --show-current)" ]]; then
+    local branch
+    branch="$(git -C "$REPO_ROOT" branch --show-current)"
+
+    if [[ -z "$branch" ]]; then
+        log_info "Detached HEAD detected — skipping repository pull."
+    elif ! git -C "$REPO_ROOT" rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
+        # No upstream: `git pull --ff-only` would fail and, under `set -e`,
+        # kill the whole script before the reinstall. Warn and carry on.
+        log_warn "No upstream tracking branch for '${branch}'; skipping git pull."
+        log_warn "Run 'git push -u origin ${branch}' to enable automatic updates."
+    else
         log_info "Updating repository..."
 
         git -C "$REPO_ROOT" pull --ff-only
-    else
-        log_info "Detached HEAD detected — skipping repository pull."
     fi
 
     echo

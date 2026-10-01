@@ -338,8 +338,23 @@ Which runs:
 
 ## Tool Versions
 
-Pin tool versions in CI (`.github/workflows/quality.yml`):
-- Bash: System default (macOS/Ubuntu)
-- ShellCheck: Latest stable
-- shfmt: Latest stable
-- Bats: Latest stable (bats-core)
+CI pins exact tool versions in `.github/workflows/quality.yml`. These are the
+versions the runners actually used, read from the logs of run `36914076094`.
+
+| Tool | ubuntu-latest (apt) | macos-latest (brew) |
+|------|---------------------|--------------------|
+| ShellCheck | `0.9.0-1` | `0.11.0` |
+| shfmt | `3.8.0-1` | `3.14.1` |
+| Bats | `1.10.0-1` | `1.14.0` |
+
+- Ubuntu installs the exact apt versions, so the package manager cannot drift.
+- macOS asserts the versions after `brew install`, because Homebrew has no
+  per-version pin for these formulae; a mismatch fails the build.
+
+Bash uses the system default on both runners.
+
+**Note the two runners still disagree on shfmt.** 3.8.0 and 3.14.1 format some
+constructs differently, which is what caused two red pushes on 2026-10-01 when
+local development (3.14.1) matched macOS but not Ubuntu. Pinning freezes the
+current behaviour; it does not make the two runners agree. Aligning them, or
+documenting the constructs both versions must avoid, is still open.
