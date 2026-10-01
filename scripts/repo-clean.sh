@@ -34,6 +34,11 @@ source "${SCRIPT_DIR}/lib/colors.sh"
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/errors.sh"
 
+# shellcheck source=lib/config.sh
+source "${SCRIPT_DIR}/lib/config.sh"
+
+load_config
+
 # shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
@@ -161,6 +166,11 @@ main() {
     # This tool deletes files recursively. Only ever point it at something
     # that is recognisably a project, so an installed copy cannot be tricked
     # into treating its install prefix (e.g. ~/.local) as a scratch tree.
+    if [[ "${ENABLE_CLEANUP:-true}" != "true" ]]; then
+        log_info "Cleanup disabled by configuration (ENABLE_CLEANUP); nothing to do."
+        return 0
+    fi
+
     local project_root
     project_root="${ROOT_OVERRIDE:-$DEFAULT_ROOT}"
 

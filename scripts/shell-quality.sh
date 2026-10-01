@@ -19,6 +19,9 @@ load_config
 # shellcheck source=lib/errors.sh
 source "${SCRIPT_DIR}/lib/errors.sh"
 
+# shellcheck source-path=SCRIPTDIR/lib
+source "${SCRIPT_DIR}/lib/logging.sh"
+
 usage() {
     cat <<EOF
 Usage: $0 [OPTIONS] <shell-script>
@@ -86,6 +89,7 @@ main() {
     echo
 
     FAILED=0
+    MISSING_TOOL=false
 
     echo "Checking Bash syntax..."
     if ! bash -n "$SCRIPT"; then
@@ -97,18 +101,26 @@ main() {
 
     if [[ "${ENABLE_SHELLCHECK:-true}" == "true" ]]; then
         echo
-        echo "Checking ShellCheck..."
-        # -x follows sourced files, matching the Makefile and CI invocation.
-        # SC1091 ("Not following") is excluded because every utility sources
-        # via the ${SCRIPT_DIR} shell variable, which ShellCheck cannot
-        # resolve statically, so the notice is unavoidable for a single-file
-        # check and is not a defect in the file being checked. See
-        # CODE_REVIEW_CHECKLIST.md: an SC1091 suppression needs a reason.
-        if ! shellcheck -x --exclude=SC1091 "$SCRIPT"; then
-            echo "✗ ShellCheck found issues"
-            FAILED=1
+        if ! command -v shellcheck >/dev/null 2>&1; then
+            # An absent tool is an incomplete environment, not a code-quality
+            # finding. Reported distinctly so it is never read as a lint
+            # failure; FAILED is left alone so the verdict is not corrupted.
+            log_warn "shellcheck not installed - skipping ShellCheck checks"
+            MISSING_TOOL=true
         else
-            echo "✓ ShellCheck passed"
+            echo "Checking ShellCheck..."
+            # -x follows sourced files, matching the Makefile and CI invocation.
+            # SC1091 ("Not following") is excluded because every utility sources
+            # via the ${SCRIPT_DIR} shell variable, which ShellCheck cannot
+            # resolve statically, so the notice is unavoidable for a single-file
+            # check and is not a defect in the file being checked. See
+            # CODE_REVIEW_CHECKLIST.md: an SC1091 suppression needs a reason.
+            if ! shellcheck -x --exclude=SC1091 "$SCRIPT"; then
+                echo "✗ ShellCheck found issues"
+                FAILED=1
+            else
+                echo "✓ ShellCheck passed"
+            fi
         fi
     else
         echo
@@ -117,12 +129,17 @@ main() {
 
     if [[ "${ENABLE_SHFMT:-true}" == "true" ]]; then
         echo
-        echo "Checking formatting..."
-        if ! shfmt -d -i 4 -ci "$SCRIPT" >/dev/null; then
-            echo "✗ Formatting issues found (run 'shfmt -w -i 4 -ci' to fix)"
-            FAILED=1
+        if ! command -v shfmt >/dev/null 2>&1; then
+            log_warn "shfmt not installed - skipping formatting check"
+            MISSING_TOOL=true
         else
-            echo "✓ Formatting OK"
+            echo "Checking formatting..."
+            if ! shfmt -d -i 4 -ci "$SCRIPT" >/dev/null; then
+                echo "✗ Formatting issues found (run 'shfmt -w -i 4 -ci' to fix)"
+                FAILED=1
+            else
+                echo "✓ Formatting OK"
+            fi
         fi
     else
         echo
@@ -131,7 +148,13 @@ main() {
 
     echo
     echo "========================================="
-    if [[ $FAILED -eq 0 ]]; then
+    if [[ $MISSING_TOOL == true ]]; then
+        # Non-zero: the environment could not be fully validated. Distinct
+        # from a lint failure so the two are never confused.
+        echo "✗ Quality checks incomplete: required tool not installed"
+        echo "========================================="
+        exit 69
+    elif [[ $FAILED -eq 0 ]]; then
         echo "✓ All quality checks passed"
         echo "========================================="
         exit 0

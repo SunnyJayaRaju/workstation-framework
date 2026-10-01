@@ -163,3 +163,24 @@ make_markerless_copy() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"--root"* ]]
 }
+# --- FIX 3: ENABLE_CLEANUP is honoured (M10) ----------------------------
+
+@test "repo-clean.sh skips cleanly when ENABLE_CLEANUP=false" {
+    printf 'junk\n' >"${PROJECT_DIR}/disabled~"
+
+    run env ENABLE_CLEANUP=false bash "$CLEAN"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"disabled"* ]]
+
+    # the file is untouched
+    [ -f "${PROJECT_DIR}/disabled~" ]
+}
+
+@test "repo-clean.sh still cleans when ENABLE_CLEANUP is not set" {
+    printf 'junk\n' >"${PROJECT_DIR}/enabled~"
+
+    run bash "$CLEAN"
+    [ "$status" -eq 0 ]
+    [ ! -e "${PROJECT_DIR}/enabled~" ]
+}

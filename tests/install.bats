@@ -36,3 +36,46 @@ teardown() {
     
     rm -f "$bad_install_dir"
 }
+# --- FIX 2: a reinstall prunes lib files that no longer exist in source --
+
+@test "install.sh prunes stale files from the installed lib" {
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
+    [ "$status" -eq 0 ]
+
+    # A leftover from a previous version
+    printf '#!/usr/bin/env bash\n' >"${INSTALL_DIR}/lib/removed-in-this-version.sh"
+    # Something the user put there themselves, which must survive
+    printf 'mine\n' >"${INSTALL_DIR}/user-placed-file.txt"
+
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
+    [ "$status" -eq 0 ]
+
+    # stale lib file pruned
+    [ ! -e "${INSTALL_DIR}/lib/removed-in-this-version.sh" ]
+
+    # real lib files untouched
+    [ -f "${INSTALL_DIR}/lib/logging.sh" ]
+    [ -f "${INSTALL_DIR}/lib/errors.sh" ]
+
+    # the prune is scoped to lib/: anything the user placed elsewhere survives
+    [ -f "${INSTALL_DIR}/user-placed-file.txt" ]
+    [ -f "${INSTALL_DIR}/backup.sh" ]
+}
+
+@test "install.sh prune never touches anything outside INSTALL_DIR/lib" {
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
+    [ "$status" -eq 0 ]
+
+    # a sibling of INSTALL_DIR that must be left completely alone
+    local sibling="${BATS_TEST_TMPDIR}/sibling-config"
+    mkdir -p "$sibling"
+    printf 'keep\n' >"${sibling}/VERSION"
+    printf 'keep\n' >"${sibling}/default.conf"
+
+    printf '# stale\n' >"${INSTALL_DIR}/lib/stale.sh"
+    run env INSTALL_DIR="$INSTALL_DIR" bash "${SCRIPTS_DIR}/install.sh"
+    [ "$status" -eq 0 ]
+
+    [ -f "${sibling}/VERSION" ]
+    [ -f "${sibling}/default.conf" ]
+}

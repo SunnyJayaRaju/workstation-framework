@@ -34,3 +34,46 @@ load test_helper
         [[ "$output" != *"SC1091"* ]]
     done
 }
+# --- FIX 1: a missing tool is an environment problem, not a lint finding --
+
+# A PATH with only what shell-quality.sh itself needs, so shellcheck/shfmt
+# are genuinely absent.
+minimal_path() {
+    local dir="${BATS_TEST_TMPDIR}/minpath"
+    mkdir -p "$dir"
+    local c
+    for c in bash env dirname basename date command cat printf sed grep head; do
+        ln -sf "$(command -v "$c")" "${dir}/$c"
+    done
+    echo "$dir"
+}
+
+@test "shell-quality.sh reports a missing shellcheck as an environment problem" {
+    local safe
+    safe="$(minimal_path)"
+
+    run env PATH="$safe" bash "${SCRIPTS_DIR}/shell-quality.sh" \
+        "${SCRIPTS_DIR}/lib/errors.sh"
+
+    # non-zero: the environment is incomplete
+    [ "$status" -ne 0 ]
+
+    # clearly a missing-tool message, NOT a lint verdict
+    [[ "$output" == *"shellcheck"* ]]
+    [[ "$output" == *"not installed"* ]]
+    [[ "$output" != *"ShellCheck found issues"* ]]
+    [[ "$output" != *"Quality checks failed"* ]]
+}
+
+@test "shell-quality.sh reports a missing shfmt as an environment problem" {
+    local safe
+    safe="$(minimal_path)"
+
+    run env PATH="$safe" bash "${SCRIPTS_DIR}/shell-quality.sh" \
+        "${SCRIPTS_DIR}/lib/errors.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"shfmt"* ]]
+    [[ "$output" == *"not installed"* ]]
+    [[ "$output" != *"Formatting issues found"* ]]
+}

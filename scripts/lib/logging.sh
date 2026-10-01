@@ -68,6 +68,19 @@ log_timestamp() {
     date '+%Y-%m-%d %H:%M:%S'
 }
 
+# Escape a string for embedding in a JSON string literal. Messages can carry
+# user-controlled paths, so a raw quote, backslash or newline would produce
+# invalid JSON and allow extra fields to be forged into the record.
+json_escape() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
 # Core logging function
 _log() {
     local level="$1"
@@ -86,7 +99,10 @@ _log() {
     local output
     case "$LOG_FORMAT" in
         json)
-            output="$(printf '{"timestamp":"%s","level":"%s","message":"%s"}' "$timestamp" "$level_name" "$message")"
+            output="$(printf '{"timestamp":"%s","level":"%s","message":"%s"}' \
+                "$(json_escape "$timestamp")" \
+                "$(json_escape "$level_name")" \
+                "$(json_escape "$message")")"
             ;;
         timestamped)
             output="[$timestamp] [$level_name] $message"

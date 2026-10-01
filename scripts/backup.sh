@@ -119,6 +119,11 @@ main() {
     echo "========================================="
     echo
 
+    if [[ "${ENABLE_BACKUP:-true}" != "true" ]]; then
+        log_info "Backup disabled by configuration (ENABLE_BACKUP); nothing to do."
+        return 0
+    fi
+
     log_info "Preparing backup..."
 
     ensure_directory "${BACKUP_DIR}"

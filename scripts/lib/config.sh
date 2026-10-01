@@ -39,11 +39,23 @@ safe_expand() {
 
 # Parse a config file safely - only allows KEY=VALUE lines
 # Ignores comments, empty lines, and exports
+# Reports a config file that was looked for but is not there. Without this,
+# a missing default.conf is invisible and the user only sees a later
+# "Required environment variable not set" with no traceable cause.
+warn_missing_config() {
+    local file="$1"
+    local kind="$2"
+
+    printf 'Warning: %s configuration file not found: %s\n' "$kind" "$file" >&2
+}
+
 parse_config_file() {
     local file="$1"
     local prefix="${2:-}"
+    local kind="${3:-configuration}"
 
     if [[ ! -f "$file" ]]; then
+        warn_missing_config "$file" "$kind"
         return 0
     fi
 
@@ -82,10 +94,12 @@ load_config() {
     local user_config="${CONFIG_DIR}/user.conf"
 
     # Load defaults first (lowest precedence)
-    parse_config_file "$default_config"
+    parse_config_file "$default_config" "" "default"
 
-    # Load user overrides (higher precedence)
-    parse_config_file "$user_config"
+    # Load user overrides (higher precedence). Absent is reported too, so an
+    # unexpected override never going to be picked up is visible rather than
+    # silent.
+    parse_config_file "$user_config" "" "user"
 }
 
 config_exists() {

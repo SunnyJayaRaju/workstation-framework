@@ -101,6 +101,33 @@ install_lib_directory() {
     else
         die EX_IOERR "Failed to install library directory"
     fi
+
+    prune_stale_lib_files
+}
+
+# Remove files present in INSTALL_DIR/lib but no longer in the source tree,
+# which is how a lib file deleted in a later version would otherwise linger
+# forever. Scoped strictly to INSTALL_DIR/lib: nothing above it, and nothing
+# the user placed in INSTALL_DIR itself, is ever considered.
+prune_stale_lib_files() {
+    local lib_source="${SCRIPT_DIR}/lib"
+    local lib_target="${INSTALL_DIR}/lib"
+    local pruned=0
+    local installed
+
+    for installed in "${lib_target}"/*; do
+        [[ -f "$installed" ]] || continue
+
+        if [[ ! -f "${lib_source}/$(basename "$installed")" ]]; then
+            rm -f "$installed"
+            pruned=$((pruned + 1))
+            log_info "Pruned stale library file: $(basename "$installed")"
+        fi
+    done
+
+    if [[ "$pruned" -gt 0 ]]; then
+        log_pass "Pruned $pruned stale library file(s)"
+    fi
 }
 
 install_config_directory() {
