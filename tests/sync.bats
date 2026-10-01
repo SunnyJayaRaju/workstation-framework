@@ -100,6 +100,12 @@ make_sync_repo() {
     repo="$(make_sync_repo real-fetch)"
     origin="${BATS_TEST_TMPDIR}/fetch-origin.git"
     git init --quiet --bare "$origin"
+    # Point the bare repo's HEAD at main explicitly. A bare repo's HEAD
+    # follows init.defaultBranch, which is main on some machines and master
+    # on others; if it names a ref that does not exist, `git clone` checks
+    # nothing out and a later `push origin main` fails with
+    # "src refspec main does not match any".
+    git -C "$origin" symbolic-ref HEAD refs/heads/main
 
     git -C "$repo" remote add origin "$origin"
     git -C "$repo" push --quiet -u origin main
