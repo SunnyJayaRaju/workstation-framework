@@ -14,6 +14,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
+# Operate on the framework's own repository, never on whatever repository
+# happens to be the caller's current working directory.
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly REPO_ROOT
+
 # shellcheck source=lib/config.sh
 source "${SCRIPT_DIR}/lib/config.sh"
 
@@ -32,12 +37,17 @@ main() {
     echo "========================================="
     echo
 
+    if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        log_fail "Not a Git repository: ${REPO_ROOT}"
+        exit 128
+    fi
+
     # git pull requires an attached branch; skip gracefully on detached HEAD
     # (typical in CI checkouts) — install + doctor below still run fully.
-    if [[ -n "$(git branch --show-current)" ]]; then
+    if [[ -n "$(git -C "$REPO_ROOT" branch --show-current)" ]]; then
         log_info "Updating repository..."
 
-        git pull --ff-only
+        git -C "$REPO_ROOT" pull --ff-only
     else
         log_info "Detached HEAD detected — skipping repository pull."
     fi

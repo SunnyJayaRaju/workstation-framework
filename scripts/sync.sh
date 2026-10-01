@@ -14,6 +14,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 
+# Operate on the framework's own repository, never on whatever repository
+# happens to be the caller's current working directory.
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly REPO_ROOT
+
 # shellcheck source=lib/errors.sh
 source "${SCRIPT_DIR}/lib/errors.sh"
 
@@ -66,7 +71,7 @@ parse_args() {
 
 get_upstream_remote() {
     local branch
-    branch="$(git branch --show-current)"
+    branch="$(git -C "$REPO_ROOT" branch --show-current)"
 
     if [[ -z "$branch" ]]; then
         return 1
@@ -74,7 +79,7 @@ get_upstream_remote() {
 
     # Try to get the upstream remote for the current branch
     local upstream
-    upstream="$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null)"
+    upstream="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null)"
 
     if [[ -n "$upstream" ]]; then
         # Extract remote name from upstream (e.g., "origin/main" -> "origin")
@@ -83,13 +88,13 @@ get_upstream_remote() {
     fi
 
     # Fallback: check if 'origin' exists
-    if git remote get-url origin >/dev/null 2>&1; then
+    if git -C "$REPO_ROOT" remote get-url origin >/dev/null 2>&1; then
         echo "origin"
         return 0
     fi
 
     # Fallback: use first remote
-    git remote | head -n1
+    git -C "$REPO_ROOT" remote | head -n1
 }
 
 main() {
@@ -106,8 +111,8 @@ main() {
         exit 69
     fi
 
-    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        log_fail "Current directory is not a Git repository."
+    if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        log_fail "Not a Git repository: ${REPO_ROOT}"
         exit 128
     fi
 
@@ -115,11 +120,11 @@ main() {
     # detached-HEAD state where branch/upstream comparisons are impossible.
     # Report the commit and finish cleanly instead of failing.
     local branch
-    branch="$(git branch --show-current)"
+    branch="$(git -C "$REPO_ROOT" branch --show-current)"
 
     if [[ -z "${branch}" ]]; then
         local detached_sha
-        detached_sha="$(git rev-parse --short HEAD)"
+        detached_sha="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
         log_info "Detached HEAD detected (typical in CI environments)."
         echo "Checked-out commit: ${detached_sha}"
         echo
@@ -138,20 +143,20 @@ main() {
 
     log_info "Fetching latest remote information from ${remote}..."
 
-    git fetch --prune "${remote}"
+    git -C "$REPO_ROOT" fetch --prune "${remote}"
 
     echo
 
     log_info "Repository status..."
 
-    git status --short --branch
+    git -C "$REPO_ROOT" status --short --branch
 
     echo
 
     local upstream_branch="${remote}/${branch}"
 
     # Check if upstream branch exists
-    if ! git rev-parse --verify "${upstream_branch}" >/dev/null 2>&1; then
+    if ! git -C "$REPO_ROOT" rev-parse --verify "${upstream_branch}" >/dev/null 2>&1; then
         log_info "Upstream branch '${upstream_branch}' does not exist yet."
         echo
         log_pass "Synchronization check completed."
@@ -166,8 +171,8 @@ main() {
     local ahead
     local behind
 
-    ahead="$(git rev-list --count "${upstream_branch}..${branch}" 2>/dev/null || echo 0)"
-    behind="$(git rev-list --count "${branch}..${upstream_branch}" 2>/dev/null || echo 0)"
+    ahead="$(git -C "$REPO_ROOT" rev-list --count "${upstream_branch}..${branch}" 2>/dev/null || echo 0)"
+    behind="$(git -C "$REPO_ROOT" rev-list --count "${branch}..${upstream_branch}" 2>/dev/null || echo 0)"
 
     if [[ "${ahead}" -eq 0 && "${behind}" -eq 0 ]]; then
         log_pass "Repository is synchronized with ${remote}."
