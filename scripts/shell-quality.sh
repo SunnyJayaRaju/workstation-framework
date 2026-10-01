@@ -98,7 +98,13 @@ main() {
     if [[ "${ENABLE_SHELLCHECK:-true}" == "true" ]]; then
         echo
         echo "Checking ShellCheck..."
-        if ! shellcheck "$SCRIPT"; then
+        # -x follows sourced files, matching the Makefile and CI invocation.
+        # SC1091 ("Not following") is excluded because every utility sources
+        # via the ${SCRIPT_DIR} shell variable, which ShellCheck cannot
+        # resolve statically, so the notice is unavoidable for a single-file
+        # check and is not a defect in the file being checked. See
+        # CODE_REVIEW_CHECKLIST.md: an SC1091 suppression needs a reason.
+        if ! shellcheck -x --exclude=SC1091 "$SCRIPT"; then
             echo "✗ ShellCheck found issues"
             FAILED=1
         else

@@ -108,8 +108,6 @@ Examples:
 
 ---
 
-
-
 # Documentation Strategy
 
 Documentation follows a Docs-as-Code approach.
@@ -224,6 +222,49 @@ store_secret_keychain "service" "account" "value"
 - Keychain entries use service name `workstation-framework`
 - 1Password requires `op` CLI and active session
 - Environment variable fallback uses uppercase with underscores (e.g., `github-token` → `GITHUB_TOKEN`)
+
+### Known limitation: secret values are passed in argv
+
+`store_secret_keychain` and `store_secret_op` hand the secret value to
+`security` and `op` as a **command-line argument**:
+
+```bash
+security add-generic-password -s "$service" -a "$account" -w "$value" -U
+op item create --category "Secure Note" --title "$name" "$field=$value"
+```
+
+Command-line arguments are visible to any local user through the process
+table (`ps -ef`, `ps aux`) for as long as the process runs. On a single-user
+Mac this is a narrow window, but on a shared or multi-user machine the secret
+is readable for that window, and it may also be captured by process-accounting
+or endpoint-monitoring tools.
+
+**There is no argv-free non-interactive alternative for these subcommands.**
+This was verified rather than assumed:
+
+- `security add-generic-password -h` documents `-w`, `-p` and `-X` as taking
+  the value in argv, and states outright: _"Use of the -p or -w options is
+  insecure. Specify `-w` as the last option to be prompted."_
+- `-w` as the final option with **no** value prompts interactively. That form
+  is argv-free but needs a TTY, so it cannot be used from an unattended script.
+- `security -i` (interactive mode) reads _commands_ from stdin, **not** the
+  password. Empirically, `add-generic-password ... -w` inside `security -i`
+  consumed the following token as the password value, silently storing the
+  wrong secret. It is not a workaround.
+
+No substitute flag has been invented to paper over this. Options for callers
+who need stronger guarantees:
+
+1. Use the interactive prompt (`security add-generic-password ... -w` with no
+   value) when a human is present.
+2. Use a secret manager that exposes an API rather than a CLI taking secrets
+   on the command line.
+3. Keep values in environment variables and never pass them to these
+   functions.
+
+Also note that `store_secret_op` discards all output from `op item create`, so
+a failed 1Password write (not signed in, vault locked, duplicate title) is
+silent and returns only a non-zero status.
 
 ## Testing
 

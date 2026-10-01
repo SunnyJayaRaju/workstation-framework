@@ -56,3 +56,14 @@ setup() {
     run store_secret '$(echo exploited)' "value"
     [ "$status" -ne 0 ] || [ "$output" != "exploited" ]
 }
+
+@test "secrets.sh call sites document the argv exposure" {
+    # `security add-generic-password` and `op item create` have no argv-free
+    # non-interactive form for these subcommands, so the process-table
+    # exposure is documented at the call site rather than engineered away.
+    run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/scripts/lib/secrets.sh"
+    [ "$status" -eq 0 ]
+
+    run grep -qiE 'argv|process table|ps -' "${PROJECT_ROOT}/docs/ARCHITECTURE.md"
+    [ "$status" -eq 0 ]
+}

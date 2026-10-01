@@ -109,3 +109,37 @@ teardown() {
 
     [ ! -d "$HOME/.ssh" ]
 }
+
+@test "restore.sh refuses to write a safety copy through a symlink" {
+    local target="${BATS_TEST_TMPDIR}/symlink-target"
+    printf 'do-not-overwrite\n' >"$target"
+
+    # The safety-copy name embeds the second it was created, which restore.sh
+    # computes internally. So plant the symlink for the current second and
+    # run immediately, retrying until the guard trips. Portable: no BSD-only
+    # `date -v`, unlike a computed future timestamp.
+    local ts rc=0
+    for _ in 1 2 3 4 5; do
+        ts="$(date +%Y%m%d%H%M%S)"
+        ln -sf "$target" "${HOME}/.zshrc.restore-safety-${ts}"
+
+        run env BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" bash \
+            "${SCRIPTS_DIR}/restore.sh"
+        rc="$status"
+        [ "$rc" -ne 0 ] && break
+    done
+
+    # Fail closed: restore refused rather than writing through the symlink
+    [ "$rc" -ne 0 ]
+
+    run cat "$target"
+    [ "$status" -eq 0 ]
+    [ "$output" = "do-not-overwrite" ]
+}
+
+@test "restore.sh documents that safety copies are never pruned" {
+    run bash "${SCRIPTS_DIR}/restore.sh" --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"never"* ]]
+    [[ "$output" == *"safety"* ]]
+}

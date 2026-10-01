@@ -106,3 +106,23 @@ stub_rm() {
     [ ! -d "${nested}/lib" ]
     [ ! -f "${nested}/backup.sh" ]
 }
+
+@test "uninstall.sh refuses INSTALL_DIR=/usr/local" {
+    stub_rm
+
+    # Two separators deep is no longer enough: rm -rf /usr/local/lib would run
+    run env INSTALL_DIR=/usr/local PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
+    [ "$status" -eq 78 ]
+    [[ "$output" == *"too shallow"* ]]
+    [ ! -s "$RM_STUB_LOG" ]
+}
+
+@test "uninstall.sh still accepts a realistic three-level INSTALL_DIR" {
+    stub_rm
+
+    # /opt/ws/bin has 3 separators and must remain valid. Stubbed so a
+    # regression cannot remove anything from the real /opt.
+    run env INSTALL_DIR=/opt/ws/bin PATH="$STUB_PATH" bash "${SCRIPTS_DIR}/uninstall.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"too shallow"* ]]
+}
