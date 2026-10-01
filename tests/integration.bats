@@ -183,22 +183,36 @@ teardown() {
 }
 
 @test "repo-clean.sh dry-run mode shows files without deleting" {
-    # Create test temp files in the project root
-    local project_root
-    project_root="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+    # Operate entirely inside a throwaway project. The previous version wrote
+    # test_cleanup.orig / test_cleanup~ into the real repository root and
+    # cleaned up inline, so a mid-test failure left junk in the repo.
+    local project_root="${BATS_TEST_TMPDIR}/clean-project"
+    mkdir -p "${project_root}/.git"
+    touch "${project_root}/test_cleanup.orig"
+    touch "${project_root}/test_cleanup~"
 
-    touch "$project_root/test_cleanup.orig"
-    touch "$project_root/test_cleanup~"
-
-    # Run repo-clean.sh --dry-run directly
-    run bash "${SCRIPTS_DIR}/repo-clean.sh" --dry-run
+    run bash "${SCRIPTS_DIR}/repo-clean.sh" --dry-run --root "$project_root"
     [ "$status" -eq 0 ]
 
     # Files should still exist after dry-run
-    [ -f "$project_root/test_cleanup.orig" ]
-    [ -f "$project_root/test_cleanup~" ]
+    [ -f "${project_root}/test_cleanup.orig" ]
+    [ -f "${project_root}/test_cleanup~" ]
+}
 
-    # Clean up test files
-    rm -f "$project_root/test_cleanup.orig" "$project_root/test_cleanup~"
+@test "repo-clean.sh dry-run leaves no files in the real repository" {
+    # Guards the regression directly: nothing this suite runs may create
+    # cleanup artefacts in the checkout.
+    local repo_root
+    repo_root="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+
+    local project_root="${BATS_TEST_TMPDIR}/clean-project-2"
+    mkdir -p "${project_root}/.git"
+    touch "${project_root}/test_cleanup.orig"
+
+    run bash "${SCRIPTS_DIR}/repo-clean.sh" --dry-run --root "$project_root"
+    [ "$status" -eq 0 ]
+
+    [ ! -e "${repo_root}/test_cleanup.orig" ]
+    [ ! -e "${repo_root}/test_cleanup~" ]
 }
 
