@@ -41,10 +41,24 @@ jobs:
           cat > /tmp/extract_changelog.awk << 'AWK_EOF'
           BEGIN {
               pat = "^## \\[" ver "\\]"
+              pend = 0
+              started = 0
           }
-          $0 ~ pat {p=1}
-          p {print}
-          /^## \[/ && p && !($0 ~ pat) {exit}
+          # A different version's heading ends this one, before anything is printed.
+          /^## \[/ && !($0 ~ pat) { if (started) exit }
+          $0 ~ pat { started = 1 }
+          started {
+              # Hold back blank lines and "---" separators. They belong to whatever
+              # follows, so if a version heading ends the section they are dropped
+              # rather than trailing the body.
+              if ($0 ~ /^[[:space:]]*$/ || $0 ~ /^[[:space:]]*---+[[:space:]]*$/) {
+                  buf[++pend] = $0
+                  next
+              }
+              for (i = 1; i <= pend; i++) print buf[i]
+              pend = 0
+              print
+          }
           AWK_EOF
           CHANGELOG=$(awk -v ver="${VERSION}" -f /tmp/extract_changelog.awk docs/CHANGELOG.md)
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
