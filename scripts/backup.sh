@@ -115,6 +115,50 @@ backup_file() {
     fi
 
     log_pass "Backed up: ${source} -> ${destination}"
+
+    # Recorded for the run manifest. Written to a plain array and flushed
+    # once, at the end, only if every source succeeded.
+    MANIFEST_ENTRIES+=("$(basename "$destination")|$(json_escape "$source")|$(sha256_of "$destination")")
+}
+
+# Record what this run wrote, so restore.sh can tell an intact backup from a
+# corrupted one before it overwrites anything.
+#
+# Written only after the whole run succeeded. A run that failed partway must
+# not leave a manifest asserting success for files it never reached.
+write_manifest() {
+    local dest_dir="$1"
+    local timestamp="$2"
+
+    local manifest="${dest_dir}/manifest_${timestamp}.json"
+    local tmp="${manifest}.tmp.$$"
+    local entry
+
+    {
+        printf '{"version":1,"timestamp":"%s","entries":[\n' "$(json_escape "$timestamp")"
+        local first=1
+        for entry in "${MANIFEST_ENTRIES[@]}"; do
+            [[ $first -eq 1 ]] || printf ',\n'
+            first=0
+            local backup_name="${entry%%|*}"
+            local rest="${entry#*|}"
+            local src="${rest%%|*}"
+            local hash="${rest##*|}"
+            printf '{"backup":"%s","source":"%s","sha256":"%s"}' \
+                "$(json_escape "$backup_name")" "$src" "$(json_escape "$hash")"
+        done
+        printf '\n]}\n'
+    } >"$tmp" || {
+        rm -f "$tmp"
+        log_warn "Could not write backup manifest; restores will not be verified."
+        return 1
+    }
+
+    # 600: the manifest names the user's real dotfile paths. Written via a
+    # temp file and moved into place so a reader never sees a partial manifest.
+    chmod 600 "$tmp"
+    mv -f "$tmp" "$manifest"
+    log_pass "Manifest written: ${manifest}"
 }
 
 # BACKUP_SOURCES is space-separated, which cannot express a path containing a
@@ -160,6 +204,7 @@ main() {
 
     local failed=0
     local source
+    MANIFEST_ENTRIES=()
     for source in "${BACKUP_SOURCES[@]}"; do
         if ! backup_file "$source" "${BACKUP_DIR}" "${TIMESTAMP}"; then
             failed=1
@@ -168,9 +213,12 @@ main() {
 
     echo
     if [[ $failed -eq 0 ]]; then
+        # Only now, with every source confirmed on disk.
+        write_manifest "${BACKUP_DIR}" "${TIMESTAMP}" || true
         log_pass "Backup completed successfully."
     else
         log_fail "Backup completed with errors."
+        log_info "No manifest written for this run; these backups cannot be integrity-checked."
         exit 1
     fi
 }

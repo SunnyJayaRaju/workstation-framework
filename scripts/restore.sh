@@ -127,6 +127,48 @@ find_latest_backup() {
     ls -t "${found[@]}" 2>/dev/null | head -n1
 }
 
+# Verify a backup against the manifest for its run, before it is allowed to
+# overwrite anything.
+#
+# Returns:
+#   0  verified against the manifest
+#   1  a manifest covers this backup and the hash does NOT match (refuse)
+#   2  no manifest covers this backup (legacy backup; proceed with a notice)
+#
+# The destination is never taken from the manifest. A manifest is a file in
+# the backup store, so it is untrusted: reading only a hash from it means a
+# tampered manifest can cause a refusal, but cannot redirect a write.
+verify_backup_integrity() {
+    local backup="$1"
+
+    local manifest
+    if ! manifest="$(manifest_for_backup "$backup")"; then
+        log_warn "No manifest for $(basename "$backup"); integrity not verified (legacy backup)."
+        return 2
+    fi
+
+    local expected
+    if ! expected="$(manifest_hash_for "$manifest" "$(basename "$backup")")" ||
+        [[ -z "$expected" ]]; then
+        log_warn "Manifest ${manifest} has no hash for $(basename "$backup"); integrity not verified."
+        return 2
+    fi
+
+    local actual
+    if ! actual="$(sha256_of "$backup")"; then
+        log_warn "Could not hash $(basename "$backup"); integrity not verified."
+        return 2
+    fi
+
+    if [[ "$actual" != "$expected" ]]; then
+        log_fail "Integrity check failed for $(basename "$backup"): content does not match the manifest."
+        log_fail "Refusing to restore it. Expected sha256 ${expected}, found ${actual}."
+        return 1
+    fi
+
+    return 0
+}
+
 restore_latest_backup() {
     local source="$1"
     local backup_dir="$2"
@@ -138,6 +180,15 @@ restore_latest_backup() {
 
     if [[ -z "$latest_backup" ]]; then
         log_fail "No backup found for: ${source}"
+        return 1
+    fi
+
+    # Verify before overwriting. A dry run reports the same verdict so it
+    # cannot be used to find out that a corrupt backup would have been taken.
+    local verdict=0
+    verify_backup_integrity "$latest_backup" || verdict=$?
+
+    if [[ $verdict -eq 1 ]]; then
         return 1
     fi
 

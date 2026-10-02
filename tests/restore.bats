@@ -176,3 +176,127 @@ teardown() {
     run cat "$HOME/.zshrc"
     [[ "$output" == *"# restored zshrc"* ]]
 }
+
+# --- FIX 2: verify before overwrite (M20) ------------------------------
+# restore.sh overwrites the user's live dotfiles. Doing that from a backup
+# that has been corrupted, truncated or tampered with since it was taken
+# would replace good content with bad and say nothing.
+
+# Replace the legacy fixtures with real backup.sh output, which writes a
+# manifest alongside the run.
+manifest_backups() {
+    # `rm -f "$BACKUP_DIR"/*` would NOT remove these: every backup of a
+    # dotfile source is itself a dotfile. Leaving the setup() fixtures in
+    # place meant the glob below matched a stale backup instead of the new one.
+    find "$BACKUP_DIR" -mindepth 1 -delete
+    export BACKUP_SOURCES="${HOME}/.zshrc ${HOME}/.gitconfig"
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+}
+
+# Flip one byte of a backup, leaving its length unchanged. Uses plain shell
+# string substitution rather than dd, which is unavailable on this machine.
+corrupt_one_byte() {
+    local file="$1"
+    local content
+    content="$(cat "$file")"
+    printf '%s' "${content/#\#/X}" >"$file"
+
+    # prove the content really changed, so this cannot silently no-op
+    [ "$content" != "$(cat "$file")" ]
+}
+
+@test "restore restores cleanly when the manifest verifies" {
+    manifest_backups
+    # there really is a manifest, so "silent" below can only mean verified,
+    # not "nothing to check"
+    run bash -c 'ls "$1"/manifest_*.json >/dev/null 2>&1' _ "$BACKUP_DIR"
+    [ "$status" -eq 0 ]
+
+    printf '# tampered\n' >"$HOME/.zshrc"
+
+    run bash "${SCRIPTS_DIR}/restore.sh"
+    [ "$status" -eq 0 ]
+    [ "$(cat "$HOME/.zshrc")" = "# original zshrc" ]
+    # a verified restore is silent about integrity
+    [[ "$output" != *"ntegrity"* ]]
+}
+
+@test "restore refuses a corrupted backup and leaves the source untouched" {
+    manifest_backups
+    corrupt_one_byte "$(ls -t "$BACKUP_DIR"/.zshrc_* | head -n1)"
+    printf '# tampered\n' >"$HOME/.zshrc"
+
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    [ "$status" -ne 0 ]
+    # names the failure and the file
+    [[ "$output" == *"ntegrity"* ]]
+    [[ "$output" == *"zshrc"* ]]
+    # and crucially, the live file was not overwritten with bad content
+    [ "$(cat "$HOME/.zshrc")" = "# tampered" ]
+}
+
+@test "a corrupted backup does not stop the other sources restoring" {
+    manifest_backups
+    corrupt_one_byte "$(ls -t "$BACKUP_DIR"/.zshrc_* | head -n1)"
+    printf '# tampered\n' >"$HOME/.zshrc"
+    printf '# tampered gitconfig\n' >"$HOME/.gitconfig"
+
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    # the run reports failure overall...
+    [ "$status" -ne 0 ]
+    # ...but the intact source was still restored
+    [ "$(cat "$HOME/.gitconfig")" = "# original gitconfig" ]
+    [ "$(cat "$HOME/.zshrc")" = "# tampered" ]
+}
+
+@test "a legacy backup with no manifest still restores, with only a notice" {
+    # the fixtures in setup() were written by hand: no manifest exists, which
+    # is exactly the shape of every backup taken before this feature existed
+    export BACKUP_SOURCES="${HOME}/.zshrc"
+
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$HOME/.zshrc")" = "# restored zshrc" ]
+    # told it could not verify, but not failed
+    [[ "$output" == *"manifest"* ]]
+    [[ "$output" != *"ntegrity check failed"* ]]
+}
+
+@test "restore --dry-run reports an integrity failure without touching anything" {
+    manifest_backups
+    corrupt_one_byte "$(ls -t "$BACKUP_DIR"/.zshrc_* | head -n1)"
+    printf '# tampered\n' >"$HOME/.zshrc"
+
+    run bash "${SCRIPTS_DIR}/restore.sh" --dry-run
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"ntegrity"* ]]
+    [ "$(cat "$HOME/.zshrc")" = "# tampered" ]
+}
+
+@test "a tampered manifest cannot redirect a restore to another path" {
+    # The manifest records a "source" field, but restore must never act on it:
+    # the destination always comes from BACKUP_SOURCES. If it were trusted, a
+    # manifest edited to name an arbitrary path would let a backup overwrite
+    # that file.
+    manifest_backups
+    local manifest victim
+    manifest="$(ls "$BACKUP_DIR"/manifest_*.json | head -n1)"
+    victim="${BATS_TEST_TMPDIR}/must-not-be-written"
+    printf 'do not touch\n' >"$victim"
+
+    # repoint every recorded source at the unrelated file, hash left intact
+    sed "s|\"source\":\"[^\"]*\"|\"source\":\"${victim}\"|" "$manifest" \
+        >"${manifest}.new"
+    mv -f "${manifest}.new" "$manifest"
+
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    # the victim is untouched, and the real source came from BACKUP_SOURCES
+    [ "$(cat "$victim")" = "do not touch" ]
+    [ "$(cat "$HOME/.zshrc")" = "# original zshrc" ]
+}

@@ -164,9 +164,10 @@ teardown() {
         bash "${SCRIPTS_DIR}/backup.sh"
     [ "$status" -eq 0 ]
 
-    # two distinct backup files, not one overwritten
+    # two distinct backup files, not one overwritten. The run's manifest is
+    # not itself a backup, so it is excluded from the count.
     local count
-    count="$(find "$BACKUP_DIR" -type f | wc -l | tr -d ' ')"
+    count="$(find "$BACKUP_DIR" -type f ! -name 'manifest_*.json' | wc -l | tr -d ' ')"
     [ "$count" -eq 2 ]
 
     # and both original contents are recoverable from separate backups
@@ -267,4 +268,99 @@ teardown() {
         perms="$(stat -c "%a" "${BACKUP_DIR}"/*wide-open* 2>/dev/null)"
     fi
     [ "$perms" = "600" ]
+}
+
+# --- FIX 1: run manifest (M19) -----------------------------------------
+# A backup that cannot be proven intact is not much of a backup. Each run
+# records what it wrote and the SHA-256 of what it wrote, so restore.sh can
+# tell a good backup from a corrupted one.
+
+@test "backup.sh writes a manifest after a successful run" {
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    run bash -c 'ls "$1"/manifest_*.json 2>/dev/null' _ "$BACKUP_DIR"
+    [ "$status" -eq 0 ]
+}
+
+@test "manifest records backup filename, source path, sha256 and timestamp" {
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    local manifest
+    manifest="$(ls "$BACKUP_DIR"/manifest_*.json | head -n1)"
+
+    run cat "$manifest"
+    # backup filename, source path and a full SHA-256
+    [[ "$output" == *'"backup":'* ]]
+    [[ "$output" == *'"source":'* ]]
+    [[ "$output" == *'"sha256":'* ]]
+    [[ "$output" =~ [0-9a-f]{64} ]]
+    # and the run timestamp
+    [[ "$output" == *'"timestamp":'* ]]
+}
+
+@test "manifest lists every source backed up in the run" {
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    local manifest
+    manifest="$(ls "$BACKUP_DIR"/manifest_*.json | head -n1)"
+    run cat "$manifest"
+
+    [[ "$output" == *"${HOME}/.zshrc"* ]]
+    [[ "$output" == *"${HOME}/.gitconfig"* ]]
+    [[ "$output" == *"${HOME}/.ssh/config"* ]]
+}
+
+@test "manifest sha256 matches the real content of each backup file" {
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    local manifest backup expected actual
+    manifest="$(ls "$BACKUP_DIR"/manifest_*.json | head -n1)"
+    # backup_key() keeps .zshrc as ".zshrc"; only slashes become %
+    backup="$(ls "$BACKUP_DIR"/.zshrc_* | head -n1)"
+
+    expected="$(grep -F "\"backup\":\"$(basename "$backup")\"" "$manifest" |
+        sed -n 's/.*"sha256":"\([0-9a-f]*\)".*/\1/p')"
+    actual="$(shasum -a 256 "$backup" | awk '{print $1}')"
+
+    [ -n "$expected" ]
+    [ "$expected" = "$actual" ]
+}
+
+@test "backup.sh writes no manifest when a source is missing" {
+    # First prove the mechanism works at all, otherwise "no manifest" would
+    # also be true simply because no manifest is ever written.
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+    run bash -c 'ls "$1"/manifest_*.json >/dev/null 2>&1' _ "$BACKUP_DIR"
+    [ "$status" -eq 0 ]
+
+    # Now a run that fails partway must leave no new manifest asserting
+    # success for files it never reached.
+    rm -f "$BACKUP_DIR"/manifest_*.json
+    export BACKUP_SOURCES="${HOME}/.zshrc ${HOME}/does-not-exist"
+
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -ne 0 ]
+
+    run bash -c 'ls "$1"/manifest_*.json 2>/dev/null' _ "$BACKUP_DIR"
+    [ "$status" -ne 0 ]
+}
+
+@test "manifest is not world-readable" {
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    local manifest mode
+    manifest="$(ls "$BACKUP_DIR"/manifest_*.json | head -n1)"
+    mode="$(stat -f '%Lp' "$manifest" 2>/dev/null || stat -c '%a' "$manifest")"
+
+    # owner-only: the manifest names the user's real dotfile paths
+    [[ "${mode: -1}" != "7" ]]
+    [[ "${mode: -1}" != "6" ]]
+    [[ "${mode: -1}" != "5" ]]
+    [[ "${mode: -1}" != "4" ]]
 }
