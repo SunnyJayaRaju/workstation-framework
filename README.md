@@ -8,7 +8,7 @@
 ![ShellCheck](https://img.shields.io/badge/ShellCheck-enabled-4EAA25?logo=shellcheck&logoColor=white)
 ![Bats](https://img.shields.io/badge/Bats-enabled-4EAA25?logo=bats&logoColor=white)
 ![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
-![Version](https://img.shields.io/badge/version-v2.1.0-blue)
+![Version](https://img.shields.io/badge/version-v2.2.0-blue)
 
 ---
 
@@ -78,7 +78,8 @@ Shared libraries eliminate duplicated logic and provide reusable functionality f
 - Configuration loading
 - Filesystem operations
 - Validation helpers
-- ANSI color handling
+- Backup path and manifest handling
+- ANSI color output (owned by the logging library)
 
 ---
 
@@ -186,7 +187,7 @@ Release
 
 # Current Release
 
-**Version:** **v2.1.0**
+**Version:** **v2.2.0**
 
 ### Highlights
 
@@ -399,8 +400,7 @@ Current coverage includes:
 
 Current status:
 
-- **43 automated tests**
-- **0 failures**
+- **`make test` passes with zero failures**
 
 ---
 
