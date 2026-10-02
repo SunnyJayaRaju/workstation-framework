@@ -21,8 +21,6 @@ readonly LIB_DIR
 source "${LIB_DIR}/errors.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${LIB_DIR}/colors.sh"
-# shellcheck source-path=SCRIPTDIR/lib
 source "${LIB_DIR}/logging.sh"
 # shellcheck source-path=SCRIPTDIR/lib
 source "${LIB_DIR}/checks.sh"
@@ -82,6 +80,39 @@ parse_args() {
                 ;;
         esac
     done
+}
+
+# Report the source VERSION and, when an install directory is configured,
+# compare it against the VERSION beside that install.
+#
+# The comparison only means anything when doctor.sh runs from the source tree:
+# run from an install, SCRIPT_DIR/../VERSION *is* the installed version and
+# would compare equal to itself. Run from source, it is the source version,
+# so a ~/.local/bin left behind by an older release shows up as a mismatch.
+#
+# That mismatch is what previously went unnoticed: the live machine ran
+# utilities several batches behind main with nothing reporting it.
+check_versions() {
+    local source_version installed_version
+    source_version="$(cat "${SCRIPT_DIR}/../VERSION" 2>/dev/null || echo unknown)"
+
+    log_info "Source version: ${source_version}"
+
+    [[ -n "${INSTALL_DIR:-}" ]] || return 0
+
+    local installed_file="${INSTALL_DIR}/../VERSION"
+    if [[ ! -f "$installed_file" ]]; then
+        log_warn "no VERSION beside INSTALL_DIR (${INSTALL_DIR}); installed version unknown"
+        return 0
+    fi
+
+    installed_version="$(cat "$installed_file" 2>/dev/null || echo unknown)"
+    if [[ "$installed_version" == "$source_version" ]]; then
+        log_pass "installed VERSION matches source (${installed_version})"
+    else
+        log_fail_tracked "version mismatch: installed ${installed_version}, source ${source_version}"
+        log_fail_tracked "run update.sh to reinstall, then re-run doctor.sh"
+    fi
 }
 
 check_utilities() {
@@ -176,13 +207,17 @@ main() {
 
     log_info "Checking required commands..."
 
-    for command in git bash shellcheck shfmt jq; do
+    for command in git bash shellcheck shfmt jq bats; do
         if command -v "${command}" >/dev/null 2>&1; then
             log_pass "${command} installed"
         else
             log_fail_tracked "${command} missing"
         fi
     done
+
+    echo
+
+    check_versions
 
     echo
 
