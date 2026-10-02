@@ -29,9 +29,6 @@ readonly DEFAULT_ROOT
 ROOT_OVERRIDE=""
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/errors.sh"
 
 # shellcheck source=lib/config.sh

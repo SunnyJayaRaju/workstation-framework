@@ -15,7 +15,7 @@ set -euo pipefail
 
 ###############################################################################
 # Script: <script-name>.sh
-# Version: <semver>
+# Version: see VERSION file
 #
 # Purpose:
 #   <One-line description of what this script does>
@@ -27,8 +27,25 @@ set -euo pipefail
   - `-e`: Exit on error
   - `-u`: Treat unset variables as error
   - `-o pipefail`: Fail pipeline if any command fails
-- Header block includes: Script name, Version (SemVer), Purpose
-- Update Version on every behavioral change
+- Header block includes: Script name, Purpose, and the fixed
+  `Version: see VERSION file` line
+
+### Versioning
+
+There is **one** version for the whole framework, held in the `VERSION` file
+at the repository root. Scripts do not carry their own version number.
+
+- The per-script SemVer header this document previously required is gone. It
+  was recorded as a deliberate change in `docs/CHANGELOG.md` (2.1.0, items 6
+  and 7) but this standard was never updated to match, so it contradicted
+  every file in the repository.
+- Do **not** put a version number in a script header. Write
+  `Version: see VERSION file`, exactly as every script already does.
+- `--version` reads `VERSION` at runtime and prints
+  `<script-name> <version>`; installed copies read the `VERSION` file that
+  `install.sh` places beside `INSTALL_DIR`.
+- A behavioural change bumps the single `VERSION` file and adds a
+  `docs/CHANGELOG.md` entry. There is no per-script version to update.
 
 ---
 

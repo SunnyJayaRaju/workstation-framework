@@ -26,9 +26,6 @@ require_var INSTALL_DIR "$EX_CONFIG"
 readonly INSTALL_DIR
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib

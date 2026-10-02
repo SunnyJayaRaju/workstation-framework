@@ -23,9 +23,6 @@ readonly REPO_ROOT
 source "${SCRIPT_DIR}/lib/errors.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib

@@ -111,6 +111,13 @@ The framework includes utilities for:
 - Cleanup
 - Shell quality validation
 
+### Where the utilities are installed
+
+`install.sh` writes every utility to `INSTALL_DIR`, which defaults to
+`~/.local/bin`. That directory must be on your `PATH` for the utilities to be
+runnable by name; `doctor.sh` reports what it finds, and `update.sh`
+reinstalls in place. See `config/default.conf` for `INSTALL_DIR`.
+
 ---
 
 ## Quality Assurance

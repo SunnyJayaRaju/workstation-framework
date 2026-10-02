@@ -8,24 +8,16 @@
 #   Shared validation helpers for the
 #   Developer Workstation Framework.
 #   Non-terminating predicate versions (return 0/1).
+#
+#   File and directory predicates live in filesystem.sh (file_exists,
+#   directory_exists). They were duplicated here under check_* names with
+#   zero call sites; the duplicates are gone rather than maintained.
 ###############################################################################
 
 check_command_exists() {
     local command="$1"
 
     command -v "$command" >/dev/null 2>&1
-}
-
-check_file_exists() {
-    local file="$1"
-
-    [[ -f "$file" ]]
-}
-
-check_directory_exists() {
-    local directory="$1"
-
-    [[ -d "$directory" ]]
 }
 
 check_variable_set() {

@@ -22,9 +22,6 @@ load_config
 source "${SCRIPT_DIR}/lib/errors.sh"
 
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 # shellcheck disable=SC1091

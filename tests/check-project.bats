@@ -282,3 +282,32 @@ make_project_missing() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Repository structure verified."* ]]
 }
+
+# --- FIX 2 (L5): dead predicates and a dead library ---------------------
+
+@test "the unused duplicate existence predicates are gone from checks.sh" {
+    # filesystem.sh owns the used ones; these had zero call sites.
+    run grep -q 'check_file_exists' "${SCRIPTS_DIR}/lib/checks.sh"
+    [ "$status" -ne 0 ]
+
+    run grep -q 'check_directory_exists' "${SCRIPTS_DIR}/lib/checks.sh"
+    [ "$status" -ne 0 ]
+
+    # and the ones still in use remain
+    run grep -q 'check_command_exists()' "${SCRIPTS_DIR}/lib/checks.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "colors.sh is gone and nothing outside logging.sh used its constants" {
+    [ ! -f "${SCRIPTS_DIR}/lib/colors.sh" ]
+
+    # nothing under scripts/ may source it any more, and neither may the
+    # template -- a template that emits a broken source line is the same bug
+    # one generation later.
+    run bash -c "grep -rl 'colors.sh' '${SCRIPTS_DIR}' '${PROJECT_ROOT}/templates' 2>/dev/null | wc -l | tr -d ' '"
+    [ "$output" = "0" ]
+
+    # and no script outside logging.sh may reference a COLOR_ constant
+    run bash -c "grep -rl 'COLOR_' '${SCRIPTS_DIR}' 2>/dev/null | grep -v 'lib/logging.sh' | wc -l | tr -d ' '"
+    [ "$output" = "0" ]
+}

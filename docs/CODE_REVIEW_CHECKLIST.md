@@ -55,7 +55,7 @@ Use this checklist for every Pull Request. All items must pass before merge.
 
 ## Runtime Testing
 
-- [ ] **`make test`** passes (all 35+ tests green)
+- [ ] **`make test`** passes (all 187 tests green)
 - [ ] **New scripts have test file** (`tests/<name>.bats`)
 - [ ] **Test coverage** includes:
   - [ ] Happy path (success)

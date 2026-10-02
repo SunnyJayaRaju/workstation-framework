@@ -69,9 +69,6 @@ validate_install_dir "$INSTALL_DIR"
 readonly INSTALL_DIR
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 usage() {

@@ -25,9 +25,6 @@ source "${SCRIPT_DIR}/lib/config.sh"
 load_config
 
 # shellcheck source-path=SCRIPTDIR/lib
-source "${SCRIPT_DIR}/lib/colors.sh"
-
-# shellcheck source-path=SCRIPTDIR/lib
 source "${SCRIPT_DIR}/lib/logging.sh"
 
 # shellcheck source-path=SCRIPTDIR/lib
