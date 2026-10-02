@@ -116,6 +116,20 @@ main() {
     record_path "tests" "Tests directory"
     record_path "assets" "Assets directory"
 
+    # The scripts/ directory existing says nothing about the utilities inside
+    # it. Each one is checked by name so a single deleted utility is reported
+    # here, instead of surfacing later as a mysterious "command not found".
+    record_path "scripts/backup.sh" "backup.sh"
+    record_path "scripts/restore.sh" "restore.sh"
+    record_path "scripts/install.sh" "install.sh"
+    record_path "scripts/uninstall.sh" "uninstall.sh"
+    record_path "scripts/update.sh" "update.sh"
+    record_path "scripts/sync.sh" "sync.sh"
+    record_path "scripts/repo-clean.sh" "repo-clean.sh"
+    record_path "scripts/shell-quality.sh" "shell-quality.sh"
+    record_path "scripts/doctor.sh" "doctor.sh"
+    record_path "scripts/check-project.sh" "check-project.sh"
+
     record_command bash "bash"
     record_command git "git"
 

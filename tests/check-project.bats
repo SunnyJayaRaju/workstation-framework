@@ -248,3 +248,37 @@ make_project_missing() {
     run grep -q 'config' "${SCRIPTS_DIR}/check-project.sh"
     [ "$status" -eq 0 ]
 }
+
+# --- FIX (addendum): each utility script checked by name ----------------
+# `scripts/` existing says nothing about the utilities inside it. Deleting
+# backup.sh used to leave the directory check green, so a missing utility
+# surfaced only when something tried to run it.
+
+@test "check-project.sh checks each of the 10 utility scripts by name" {
+    for s in backup.sh restore.sh install.sh uninstall.sh update.sh \
+        sync.sh repo-clean.sh shell-quality.sh doctor.sh check-project.sh; do
+        run grep -q "record_path \"scripts/${s}\"" "${SCRIPTS_DIR}/check-project.sh"
+        [ "$status" -eq 0 ]
+    done
+}
+
+@test "check-project.sh names a missing utility script specifically" {
+    make_project_missing "nothing-missing"
+    rm -f "${PROJ}/scripts/backup.sh"
+
+    run bash "${PROJ}/scripts/check-project.sh"
+
+    [ "$status" -ne 0 ]
+    # named individually, not just "the scripts directory"
+    [[ "$output" == *"backup.sh"* ]]
+    [[ "$output" != *"Repository structure verified."* ]]
+}
+
+@test "check-project.sh still passes when every utility script is present" {
+    make_project_missing "nothing-missing"
+
+    run bash "${PROJ}/scripts/check-project.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Repository structure verified."* ]]
+}
