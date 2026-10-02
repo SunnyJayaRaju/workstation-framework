@@ -82,19 +82,64 @@ main() {
     echo "=========================================="
     echo
 
-    check_exists ".git" "Git repository"
-    check_exists "README.md" "README"
-    check_exists ".gitignore" ".gitignore"
-    check_exists ".editorconfig" ".editorconfig"
-    check_exists ".vscode" "VS Code configuration"
+    # Every check below is recorded rather than allowed to abort the run.
+    # check_exists returns 1 on a miss, and under `set -e` that used to kill
+    # the script at the first problem, so a single missing directory reported
+    # nothing about the rest of the tree.
+    local failed=0
 
-    check_exists "docs" "Documentation directory"
-    check_exists "scripts" "Scripts directory"
-    check_exists "templates" "Templates directory"
-    check_exists "tests" "Tests directory"
-    check_exists "assets" "Assets directory"
+    record_path() {
+        check_exists "$1" "$2" || failed=1
+    }
+
+    record_command() {
+        if check_command_exists "$1"; then
+            log_pass "$2"
+        else
+            log_fail "$2"
+            failed=1
+        fi
+    }
+
+    record_path ".git" "Git repository"
+    record_path "README.md" "README"
+    record_path ".gitignore" ".gitignore"
+    record_path ".editorconfig" ".editorconfig"
+    record_path ".vscode" "VS Code configuration"
+
+    record_path "VERSION" "VERSION file"
+    record_path "Makefile" "Makefile"
+    record_path "config" "config directory"
+    record_path "docs" "Documentation directory"
+    record_path "scripts" "Scripts directory"
+    record_path "templates" "Templates directory"
+    record_path "tests" "Tests directory"
+    record_path "assets" "Assets directory"
+
+    # The scripts/ directory existing says nothing about the utilities inside
+    # it. Each one is checked by name so a single deleted utility is reported
+    # here, instead of surfacing later as a mysterious "command not found".
+    record_path "scripts/backup.sh" "backup.sh"
+    record_path "scripts/restore.sh" "restore.sh"
+    record_path "scripts/install.sh" "install.sh"
+    record_path "scripts/uninstall.sh" "uninstall.sh"
+    record_path "scripts/update.sh" "update.sh"
+    record_path "scripts/sync.sh" "sync.sh"
+    record_path "scripts/repo-clean.sh" "repo-clean.sh"
+    record_path "scripts/shell-quality.sh" "shell-quality.sh"
+    record_path "scripts/doctor.sh" "doctor.sh"
+    record_path "scripts/check-project.sh" "check-project.sh"
+
+    record_command bash "bash"
+    record_command git "git"
 
     echo
+
+    if ((failed)); then
+        log_fail "Repository structure check failed."
+        exit 1
+    fi
+
     log_pass "Repository structure verified."
 
     exit 0

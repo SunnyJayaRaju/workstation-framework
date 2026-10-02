@@ -63,17 +63,6 @@ die() {
     exit "$code"
 }
 
-# Assert condition, exit with code if false
-assert() {
-    local condition="$1"
-    local code="${2:-$EX_SOFTWARE}"
-    local msg="${3:-Assertion failed}"
-
-    if ! eval "$condition"; then
-        die "$code" "$msg"
-    fi
-}
-
 # Require command to be available
 require_command() {
     local cmd="$1"
