@@ -127,6 +127,59 @@ find_latest_backup() {
     ls -t "${found[@]}" 2>/dev/null | head -n1
 }
 
+# Verify a backup against the manifest for its run, before it is allowed to
+# overwrite anything.
+#
+# Returns:
+#   0  verified against the manifest
+#   1  a manifest covers this backup and the hash does NOT match (refuse)
+#   2  no manifest covers this backup (legacy backup; proceed with a notice)
+#
+# The destination is never taken from the manifest. A manifest is a file in
+# the backup store, so it is untrusted: reading only a hash from it means a
+# tampered manifest can cause a refusal, but cannot redirect a write.
+verify_backup_integrity() {
+    local backup="$1"
+
+    # Checked before the manifest, deliberately. The SHA-256 of empty content
+    # is a fixed constant, so a manifest written for an empty backup matches
+    # it perfectly and the hash check cannot catch this case at all.
+    # -s is false for an empty file, and for a missing one; a missing backup is
+    # caught by the caller.
+    if [[ ! -s "$backup" ]]; then
+        log_fail "Refusing to restore $(basename "$backup"): the backup is 0 bytes."
+        log_fail "An empty backup would overwrite live config with nothing."
+        return 1
+    fi
+
+    local manifest
+    if ! manifest="$(manifest_for_backup "$backup")"; then
+        log_warn "No manifest for $(basename "$backup"); integrity not verified (legacy backup)."
+        return 2
+    fi
+
+    local expected
+    if ! expected="$(manifest_hash_for "$manifest" "$(basename "$backup")")" ||
+        [[ -z "$expected" ]]; then
+        log_warn "Manifest ${manifest} has no hash for $(basename "$backup"); integrity not verified."
+        return 2
+    fi
+
+    local actual
+    if ! actual="$(sha256_of "$backup")"; then
+        log_warn "Could not hash $(basename "$backup"); integrity not verified."
+        return 2
+    fi
+
+    if [[ "$actual" != "$expected" ]]; then
+        log_fail "Integrity check failed for $(basename "$backup"): content does not match the manifest."
+        log_fail "Refusing to restore it. Expected sha256 ${expected}, found ${actual}."
+        return 1
+    fi
+
+    return 0
+}
+
 restore_latest_backup() {
     local source="$1"
     local backup_dir="$2"
@@ -141,6 +194,15 @@ restore_latest_backup() {
         return 1
     fi
 
+    # Verify before overwriting. A dry run reports the same verdict so it
+    # cannot be used to find out that a corrupt backup would have been taken.
+    local verdict=0
+    verify_backup_integrity "$latest_backup" || verdict=$?
+
+    if [[ $verdict -eq 1 ]]; then
+        return 1
+    fi
+
     if [[ "$DRY_RUN" == true ]]; then
         log_pass "Would restore ${source} from ${latest_backup}"
         return 0
@@ -152,14 +214,31 @@ restore_latest_backup() {
     # Preserve whatever is being overwritten so a restore is reversible
     if [[ -f "$source" ]]; then
         local safety
-        safety="${source}.restore-safety-$(date +%Y%m%d%H%M%S)"
+        # This safety copy is the only thing making the restore reversible, so
+        # its name must never be reused. A plain $(date +%Y%m%d%H%M%S) had only
+        # one-second resolution: two restores of one source within the same
+        # second picked the same path and the second silently destroyed the
+        # first. Walk past names that are taken instead.
+        local stamp n=0
+        stamp="$(date +%Y%m%d%H%M%S)"
+        while :; do
+            if [[ $n -eq 0 ]]; then
+                safety="${source}.restore-safety-${stamp}"
+            else
+                safety="${source}.restore-safety-${stamp}-${n}"
+            fi
 
-        # The safety name is predictable. Fail closed rather than write
-        # through a symlink someone else planted at that path.
-        if [[ -L "$safety" ]]; then
-            log_fail "Safety copy path is a symlink, refusing to continue: ${safety}"
-            return 1
-        fi
+            # The safety name is predictable. Fail closed rather than write
+            # through a symlink someone else planted at that path -- and do not
+            # skip past it either, since that would defeat the refusal.
+            if [[ -L "$safety" ]]; then
+                log_fail "Safety copy path is a symlink, refusing to continue: ${safety}"
+                return 1
+            fi
+
+            [[ -e "$safety" ]] || break
+            n=$((n + 1))
+        done
 
         if ! cp -p "$source" "$safety"; then
             log_fail "Failed to preserve current file: ${source}"
