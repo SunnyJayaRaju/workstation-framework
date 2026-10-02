@@ -200,6 +200,15 @@ main() {
 
     ensure_directory "${BACKUP_DIR}"
 
+    # The backup files are written 600, but the directory itself was left at
+    # whatever umask produced -- 755 here -- which lets anyone list the names of
+    # the user's config files and the timestamps of every backup. tighten it, and
+    # tighten an existing store too, since ensure_directory only creates.
+    #
+    # Scoped to BACKUP_DIR on purpose: ensure_directory's default is unchanged so
+    # INSTALL_DIR and the other callers are unaffected.
+    chmod 700 "${BACKUP_DIR}" 2>/dev/null || true
+
     warn_if_split_source
 
     local failed=0

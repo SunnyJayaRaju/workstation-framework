@@ -364,3 +364,44 @@ teardown() {
     [[ "${mode: -1}" != "5" ]]
     [[ "${mode: -1}" != "4" ]]
 }
+
+# --- FIX C: BACKUP_DIR must not be group/other readable (M23) ----------
+# BACKUP_DIR holds 600 copies of things like ~/.ssh/config and ~/.gitconfig.
+# The files were protected; the directory listing that names them was not.
+
+dir_mode() {
+    stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"
+}
+
+@test "backup.sh creates a fresh BACKUP_DIR with mode 700" {
+    # `rm -f` cannot remove a directory; empty it and rmdir it so this really
+    # is a first-run creation.
+    find "$BACKUP_DIR" -mindepth 1 -delete
+    rmdir "$BACKUP_DIR"
+    [ ! -d "$BACKUP_DIR" ]
+
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    [ "$(dir_mode "$BACKUP_DIR")" = "700" ]
+}
+
+@test "backup.sh tightens a pre-existing permissive BACKUP_DIR to 700" {
+    chmod 755 "$BACKUP_DIR"
+    [ "$(dir_mode "$BACKUP_DIR")" = "755" ]
+
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    [ "$(dir_mode "$BACKUP_DIR")" = "700" ]
+}
+
+@test "backup backups themselves stay owner-only inside a 700 BACKUP_DIR" {
+    find "$BACKUP_DIR" -mindepth 1 -delete
+    rmdir "$BACKUP_DIR"
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    run bash -c 'find "$1" -type f ! -perm 600 | wc -l | tr -d " "' _ "$BACKUP_DIR"
+    [ "$output" = "0" ]
+}

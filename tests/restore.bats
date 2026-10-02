@@ -300,3 +300,106 @@ corrupt_one_byte() {
     [ "$(cat "$victim")" = "do not touch" ]
     [ "$(cat "$HOME/.zshrc")" = "# original zshrc" ]
 }
+
+# --- FIX A: refuse a 0-byte backup (M21) -------------------------------
+# An empty backup is never a legitimate restore of a non-empty file: it can
+# only come from a truncated copy, a disk-full write, or a bad install. The
+# manifest hash check does NOT catch it when the manifest was written for
+# that same empty file -- SHA-256 of empty content is a fixed constant, so
+# the hash legitimately matches. Hence an explicit size check.
+
+@test "restore refuses a 0-byte backup whose manifest hash legitimately matches" {
+    find "$BACKUP_DIR" -mindepth 1 -delete
+    export BACKUP_SOURCES="${HOME}/.zshrc ${HOME}/.gitconfig"
+
+    # an empty source yields a 0-byte backup AND a manifest recording the
+    # well-known SHA-256 of empty content, so the hash check passes it
+    : >"$HOME/.zshrc"
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    run bash -c 'grep -l "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" "$1"/manifest_*.json >/dev/null' _ "$BACKUP_DIR"
+    [ "$status" -eq 0 ]
+
+    printf '# tampered\n' >"$HOME/.zshrc"
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"0 bytes"* ]]
+    [[ "$output" == *"zshrc"* ]]
+    [ "$(cat "$HOME/.zshrc")" = "# tampered" ]
+}
+
+@test "restore refuses a 0-byte backup that has no manifest at all" {
+    export BACKUP_SOURCES="${HOME}/.zshrc"
+    # the setup() fixture, truncated to nothing
+    : >"$BACKUP_DIR/.zshrc_2026-01-01_00-00-00"
+
+    printf '# tampered\n' >"$HOME/.zshrc"
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"0 bytes"* ]]
+    [ "$(cat "$HOME/.zshrc")" = "# tampered" ]
+}
+
+@test "a 0-byte backup does not stop the other sources restoring" {
+    find "$BACKUP_DIR" -mindepth 1 -delete
+    export BACKUP_SOURCES="${HOME}/.zshrc ${HOME}/.gitconfig"
+    : >"$HOME/.zshrc"
+    run bash "${SCRIPTS_DIR}/backup.sh"
+    [ "$status" -eq 0 ]
+
+    printf '# tampered zshrc\n' >"$HOME/.zshrc"
+    printf '# tampered gitconfig\n' >"$HOME/.gitconfig"
+    run bash "${SCRIPTS_DIR}/restore.sh"
+
+    [ "$status" -ne 0 ]
+    [ "$(cat "$HOME/.zshrc")" = "# tampered zshrc" ]
+    [ "$(cat "$HOME/.gitconfig")" = "# original gitconfig" ]
+}
+
+# --- FIX B: safety copies must not collide (M22) ------------------------
+# The safety copy is the only thing making a restore reversible. Its name
+# used 1-second resolution, so two restores of one source within the same
+# second targeted the same path and the second overwrote the first.
+
+@test "a safety copy already present for this second is not overwritten" {
+    export BACKUP_SOURCES="${HOME}/.zshrc"
+    printf '# restore-me\n' >"$HOME/.zshrc"
+
+    # plant a safety copy at exactly the name this restore would choose
+    local planted ts rc=0
+    for _ in 1 2 3 4 5; do
+        ts="$(date +%Y%m%d%H%M%S)"
+        planted="${HOME}/.zshrc.restore-safety-${ts}"
+        printf '# earlier-restore\n' >"$planted"
+
+        run bash "${SCRIPTS_DIR}/restore.sh"
+        rc="$status"
+        [ "$rc" -eq 0 ] && break
+    done
+    [ "$rc" -eq 0 ]
+
+    # the earlier copy survived...
+    run cat "$planted"
+    [ "$status" -eq 0 ]
+    [ "$output" = "# earlier-restore" ]
+    # ...and this restore kept a distinct one of its own
+    run bash -c 'find "$1" -name ".zshrc.restore-safety-*" | wc -l | tr -d " "' _ "$HOME"
+    [ "$output" -ge 2 ]
+}
+
+@test "back-to-back restores of one source leave two distinct safety copies" {
+    export BACKUP_SOURCES="${HOME}/.zshrc"
+
+    printf '# first\n' >"$HOME/.zshrc"
+    run bash "${SCRIPTS_DIR}/restore.sh"
+    [ "$status" -eq 0 ]
+    printf '# second\n' >"$HOME/.zshrc"
+    run bash "${SCRIPTS_DIR}/restore.sh"
+    [ "$status" -eq 0 ]
+
+    run bash -c 'find "$1" -name ".zshrc.restore-safety-*" | wc -l | tr -d " "' _ "$HOME"
+    [ "$output" -ge 2 ]
+}

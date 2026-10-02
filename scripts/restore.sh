@@ -141,6 +141,17 @@ find_latest_backup() {
 verify_backup_integrity() {
     local backup="$1"
 
+    # Checked before the manifest, deliberately. The SHA-256 of empty content
+    # is a fixed constant, so a manifest written for an empty backup matches
+    # it perfectly and the hash check cannot catch this case at all.
+    # -s is false for an empty file, and for a missing one; a missing backup is
+    # caught by the caller.
+    if [[ ! -s "$backup" ]]; then
+        log_fail "Refusing to restore $(basename "$backup"): the backup is 0 bytes."
+        log_fail "An empty backup would overwrite live config with nothing."
+        return 1
+    fi
+
     local manifest
     if ! manifest="$(manifest_for_backup "$backup")"; then
         log_warn "No manifest for $(basename "$backup"); integrity not verified (legacy backup)."
@@ -203,14 +214,31 @@ restore_latest_backup() {
     # Preserve whatever is being overwritten so a restore is reversible
     if [[ -f "$source" ]]; then
         local safety
-        safety="${source}.restore-safety-$(date +%Y%m%d%H%M%S)"
+        # This safety copy is the only thing making the restore reversible, so
+        # its name must never be reused. A plain $(date +%Y%m%d%H%M%S) had only
+        # one-second resolution: two restores of one source within the same
+        # second picked the same path and the second silently destroyed the
+        # first. Walk past names that are taken instead.
+        local stamp n=0
+        stamp="$(date +%Y%m%d%H%M%S)"
+        while :; do
+            if [[ $n -eq 0 ]]; then
+                safety="${source}.restore-safety-${stamp}"
+            else
+                safety="${source}.restore-safety-${stamp}-${n}"
+            fi
 
-        # The safety name is predictable. Fail closed rather than write
-        # through a symlink someone else planted at that path.
-        if [[ -L "$safety" ]]; then
-            log_fail "Safety copy path is a symlink, refusing to continue: ${safety}"
-            return 1
-        fi
+            # The safety name is predictable. Fail closed rather than write
+            # through a symlink someone else planted at that path -- and do not
+            # skip past it either, since that would defeat the refusal.
+            if [[ -L "$safety" ]]; then
+                log_fail "Safety copy path is a symlink, refusing to continue: ${safety}"
+                return 1
+            fi
+
+            [[ -e "$safety" ]] || break
+            n=$((n + 1))
+        done
 
         if ! cp -p "$source" "$safety"; then
             log_fail "Failed to preserve current file: ${source}"
