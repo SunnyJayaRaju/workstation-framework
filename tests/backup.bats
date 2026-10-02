@@ -369,8 +369,15 @@ teardown() {
 # BACKUP_DIR holds 600 copies of things like ~/.ssh/config and ~/.gitconfig.
 # The files were protected; the directory listing that names them was not.
 
+# GNU stat first, BSD second -- NOT the other way round. On Linux, `stat -f`
+# is "display filesystem status" and SUCCEEDS, so a `|| stat -c` fallback never
+# fires and you silently get filesystem info instead of a mode. On macOS BSD
+# stat has no -c, so it fails cleanly and -f is used.
 dir_mode() {
-    stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"
+    local m
+    m="$(stat -c '%a' "$1" 2>/dev/null)"
+    [[ -n "$m" ]] || m="$(stat -f '%Lp' "$1" 2>/dev/null)"
+    printf '%s' "$m"
 }
 
 @test "backup.sh creates a fresh BACKUP_DIR with mode 700" {
