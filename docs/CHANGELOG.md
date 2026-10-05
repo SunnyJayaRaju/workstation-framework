@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 ---
 
+## [2.2.1] - 2026-10-05
+
+Patch release: the release pipeline only.
+
+- **Fixed: the release notes no longer leak the next version heading.**
+  The changelog-extraction awk script printed forward until the *next*
+  section rather than stopping at it, so a release body included the
+  heading of whatever version followed the one being released. Extraction
+  now ends at the first `## [` heading that is not the requested one, and
+  bare separators and blank lines that belong to the following section
+  are dropped. Covered by `tests/release-extraction.bats`.
+
+---
+
 ## [2.2.0] - 2026-10-02
 
 Minor bump. Substantial new behaviour (backup integrity verification) and a
