@@ -42,6 +42,23 @@ SH
     cat >"$RUNNER" <<'ZSH'
 export PATH="$GUARD_SHIM_DIR:$PATH"
 source "$GUARD_PATH"
+# Self-policing. `gem` and `sudo` must resolve to the SHIMS. If either resolves
+# anywhere else, this test is about to run the REAL gem or the REAL sudo, and
+# on this machine that means a root write into /opt/homebrew: refuse instead.
+#
+# `whence -p`, not `command -v`. The guard defines gem and sudo as FUNCTIONS,
+# and `command -v` on a function prints the word "gem", not a path. `whence -p`
+# is zsh's path-only lookup and skips functions, so it reports the executable
+# that would actually run.
+for _rgh_name in gem sudo; do
+    case "$(whence -p $_rgh_name)" in
+        "$GUARD_SHIM_DIR"/*) ;;
+        *)
+            print -u2 -- "REFUSING TO RUN: $_rgh_name resolves to [$(whence -p $_rgh_name)], not a shim"
+            exit 99
+            ;;
+    esac
+done
 for a in "$@"; do
     eval "gem $a" 2>&1 | sed 's/^/  gem /'
     eval "sudo $a" 2>&1 | sed 's/^/  sudo /'
@@ -49,6 +66,39 @@ done
 ZSH
     export GUARD_SHIM_DIR="$SHIMDIR"
     export GUARD_PATH="$GUARD"
+
+    # A second runner with no decorative prefix. The guard's own output has to
+    # be read character-for-character to check that the bypass line it prints is
+    # a runnable command, so nothing may be added to the front of it.
+    RAWRUNNER="${BATS_TEST_TMPDIR}/raw.zsh"
+    cat >"$RAWRUNNER" <<'ZSH'
+export PATH="$GUARD_SHIM_DIR:$PATH"
+source "$GUARD_PATH"
+# Same self-policing as the other runner, and for the same `whence -p` reason.
+for _rgh_name in gem sudo; do
+    case "$(whence -p $_rgh_name)" in
+        "$GUARD_SHIM_DIR"/*) ;;
+        *)
+            print -u2 -- "REFUSING TO RUN: $_rgh_name resolves to [$(whence -p $_rgh_name)], not a shim"
+            exit 99
+            ;;
+    esac
+done
+eval "$GUARD_CMD"
+ZSH
+}
+
+# Runs one command line against the guard with NO prefix added to its output.
+#
+# The command line is evaluated inside zsh, never in bats' own shell. This is
+# not a style rule. An earlier version of the bypass test ran
+#   eval "$bypass"
+# in bats' bash, where `gem` and `sudo` are the REAL binaries. The bypass line
+# it evaluated was "ALLOW_RISKY_GEM=1 gem update --sys", which sets the guard's
+# own bypass variable and then runs a real system-wide RubyGems update. That
+# installed 591 files into /opt/homebrew/lib/ruby/site_ruby on 2026-10-10.
+run_guard_raw() {
+    GUARD_CMD="$1" run /bin/zsh "$RAWRUNNER"
 }
 
 # Runs `gem <args>` and `sudo <args>` against the shims.
@@ -113,6 +163,102 @@ sudo_refused() {
 # ---------------------------------------------------------------------------
 # Everything else must still reach the real command untouched.
 # ---------------------------------------------------------------------------
+
+@test "guard refuses sudo by BASENAME, not by literal string" {
+    # `sudo /opt/homebrew/bin/gem update --system` and the brew equivalent both
+    # walked straight through before: the argument is not the string "gem", it is
+    # a path ending in it. Matched with zsh ${a:t}, the tail.
+    sudo_refused "/opt/homebrew/bin/gem update --system"
+    sudo_refused "/opt/homebrew/bin/brew upgrade"
+    sudo_refused "/usr/local/bin/gem install foo"
+}
+
+@test "guard still passes sudo through for a path that merely ends in bin" {
+    run_guard "ls /opt/homebrew/bin"
+    [[ "$output" == *"REACHED-REAL-sudo: ls /opt/homebrew/bin"* ]]
+    [[ "$output" != *"refused:"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# The printed bypass must be runnable as-is. It used to be built from the
+# arguments alone, so a refusal of `sudo gem install foo` printed
+#   ALLOW_RISKY_GEM=1 gem install foo
+# which drops the sudo and is NOT the command that was blocked.
+# ---------------------------------------------------------------------------
+
+@test "the bypass line names the command word that was refused" {
+    run_guard_raw "sudo gem install foo"
+    [[ "$output" == *"ALLOW_RISKY_GEM=1 sudo gem install foo"* ]]
+
+    run_guard_raw "gem update --system"
+    [[ "$output" == *"ALLOW_RISKY_GEM=1 gem update --system"* ]]
+}
+
+@test "the refusal headline also names the command word" {
+    # Raw runner: the decorated one prefixes every line with "  gem " or
+    # "  sudo ", which would hide the exact text being asserted on.
+    run_guard_raw "sudo gem install foo"
+    [[ "$output" == *"refused: sudo gem install foo"* ]]
+
+    run_guard_raw "gem update --sys"
+    [[ "$output" == *"refused: gem update --sys"* ]]
+}
+
+@test "the runners refuse to run unless gem and sudo resolve to the shims" {
+    # The self-policing guard inside each runner, proved to actually fire by
+    # pointing GUARD_SHIM_DIR somewhere that is not on PATH at all. Without
+    # this, the safety check is code that has never been seen to fail.
+    run env GUARD_SHIM_DIR="${BATS_TEST_TMPDIR}/nowhere" \
+        GUARD_PATH="$GUARD" GUARD_CMD="gem list" \
+        /bin/zsh "$RAWRUNNER"
+    [ "$status" -eq 99 ]
+    [[ "$output" == *"REFUSING TO RUN"* ]]
+    [[ "$output" == *"not a shim"* ]]
+    [[ "$output" != *"REACHED-REAL"* ]]
+    # It must name the real binary it would otherwise have run.
+    [[ "$output" == *"/opt/homebrew/bin/gem"* ]]
+}
+
+@test "the shims really are what the runners resolve" {
+    # The positive half of the same guarantee: with GUARD_SHIM_DIR set
+    # correctly, gem and sudo resolve to the shim, not to /opt/homebrew/bin or
+    # /usr/bin. This is what makes "REFUSING TO RUN" mean something.
+    run env GUARD_SHIM_DIR="$SHIMDIR" GUARD_PATH="$GUARD" GUARD_CMD="gem list" \
+        /bin/zsh "$RAWRUNNER"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"REACHED-REAL-gem: list"* ]]
+}
+
+@test "the printed bypass, run verbatim, reaches the command" {
+    # Extract the line the guard printed and actually execute it. That is the
+    # only way to know the text is a runnable command and not a slogan.
+    run_guard_raw "gem update --sys"
+    local bypass
+    bypass="$(printf '%s\n' "$output" |
+        sed -n 's/^[[:space:]]*\(ALLOW_RISKY_GEM=1 .*\)$/\1/p')"
+    [ -n "$bypass" ]
+    [[ "$bypass" == ALLOW_RISKY_GEM=1* ]]
+    [[ "$bypass" == *"gem"* ]]
+    # Executed by zsh, never by bats' bash. In bash, `gem` and `sudo` are the
+    # REAL binaries and this would run the very command the guard refused.
+    local out
+    out="$(GUARD_CMD="$bypass" /bin/zsh "$RAWRUNNER" 2>&1)"
+    [[ "$out" == *"REACHED-REAL-gem: update --sys"* ]]
+}
+
+@test "the printed sudo bypass, run verbatim, reaches the command" {
+    run_guard_raw "sudo gem install foo"
+    local bypass
+    bypass="$(printf '%s\n' "$output" |
+        sed -n 's/^[[:space:]]*\(ALLOW_RISKY_GEM=1 .*\)$/\1/p')"
+    [ -n "$bypass" ]
+    [[ "$bypass" == ALLOW_RISKY_GEM=1* ]]
+    [[ "$bypass" == *"sudo"* ]]
+    # Executed by zsh, never by bats' bash, so `sudo` is the shim and not sudo.
+    local out
+    out="$(GUARD_CMD="$bypass" /bin/zsh "$RAWRUNNER" 2>&1)"
+    [[ "$out" == *"REACHED-REAL-sudo: gem install foo"* ]]
+}
 
 @test "guard passes sudo through for everything except gem and brew" {
     run_guard "docker ps" "apt-get install x" "ls -l"
