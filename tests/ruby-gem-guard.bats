@@ -22,16 +22,25 @@ setup() {
     mkdir -p "${RGH_HOMEBREW_ROOT}/lib/ruby/gems"
     mkdir -p "${RGH_GEM_HOME}/ruby/4.0.0"/{bin,gems,plugins}
 
-    # A rubygems.rb the fake `ruby` will point at, and a fake `gem` that
-    # reports the matching version. Parity holds until a test breaks it.
-    printf '  VERSION = "4.0.20"\n' >"${FIX}/rubygems.rb"
+    # TWO rubygems.rb files, because that is the whole point of the parity check.
+    #
+    # rubylibdir stands for the stdlib copy inside the keg - what Homebrew
+    # SHIPS, and what site_ruby cannot shadow. The fake `ruby` reports that
+    # path, exactly as `RbConfig::CONFIG["rubylibdir"]` does on the real
+    # machine.
+    #
+    # site_ruby/4.0.0 is where a `gem update --system` writes its own
+    # rubygems.rb. The fake `gem -v` follows whichever one is loaded, and
+    # site_ruby sits earlier in $LOAD_PATH (measured: index 1 vs 6), so an
+    # override there is what `gem -v` reports. That is precisely the situation
+    # that made the old check compare a value against itself.
+    mkdir -p "${FIX}/rubylibdir"
+    printf '  VERSION = "4.0.20"\n' >"${FIX}/rubylibdir/rubygems.rb"
     cat >"${SHIM}/ruby" <<EOF
 #!/bin/sh
-[ "\$1" = "-e" ] && echo "${FIX}/rubygems.rb"
+[ "\$1" = "-e" ] && echo "${FIX}/rubylibdir/rubygems.rb"
 exit 0
 EOF
-    # Models the real thing: `gem -v` reports the version of the rubygems.rb
-    # that is loaded, so installing a site_ruby override changes what it prints.
     cat >"${SHIM}/gem" <<EOF
 #!/bin/sh
 if [ "\$1" = "-v" ]; then
@@ -41,7 +50,8 @@ if [ "\$1" = "-v" ]; then
         grep -m1 -E '^[[:space:]]*VERSION' "\${RGH_HOMEBREW_ROOT}/lib/ruby/site_ruby/4.0.0/rubygems.rb" |
             sed -E 's/.*"([^"]+)".*/\\1/'
     else
-        echo 4.0.20
+        grep -m1 -E '^[[:space:]]*VERSION' "${FIX}/rubylibdir/rubygems.rb" |
+            sed -E 's/.*"([^"]+)".*/\\1/'
     fi
 fi
 exit 0
@@ -173,6 +183,32 @@ check() { bash -c 'source "$1"; "$2"' _ "$RGH_LIB" "$1"; }
     [ "$status" -eq 1 ]
     [[ "$output" == *"FAIL  gem reports 4.0.21 but the Homebrew Ruby ships 4.0.20"* ]]
     [[ "$output" == *"site_ruby override is loaded"* ]]
+}
+
+@test "an override installed in site_ruby is caught, not compared against itself" {
+    # The regression this fixes, stated as a test.
+    #
+    # The fixture's fake `ruby` answers the rubylibdir probe with the SHIPPED
+    # copy (4.0.20). The fake `gem -v` follows whichever rubygems.rb is loaded,
+    # and site_ruby sits earlier in $LOAD_PATH - measured on the real machine as
+    # index 1 against rubylibdir's index 6 - so it reports the OVERRIDE.
+    #
+    # The old implementation read the shipped version out of the LOADED file,
+    # which made both sides of the comparison identical and the check
+    # incapable of failing. Here the two genuinely differ and it FAILs.
+    printf '  VERSION = "4.0.21"\n' \
+        >"${RGH_HOMEBREW_ROOT}/lib/ruby/site_ruby/4.0.0/rubygems.rb"
+
+    run check rgh_check_gem_version_parity
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"FAIL  gem reports 4.0.21 but the Homebrew Ruby ships 4.0.20"* ]]
+    [[ "$output" == *"site_ruby override is loaded"* ]]
+}
+
+@test "no override means the two versions agree and the check PASSes" {
+    run check rgh_check_gem_version_parity
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"PASS  gem 4.0.20 matches"* ]]
 }
 
 @test "the parity check FAILs rather than passing when it cannot measure" {

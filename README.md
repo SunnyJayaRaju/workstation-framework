@@ -362,6 +362,18 @@ sudo gem install <name> # never: writes into /opt/homebrew as root
 Homebrew owns Ruby's gems. `sudo gem` and `sudo brew` are refused by
 `~/.config/zsh/guard.zsh`, which is loaded from `~/.zshrc`.
 
+> **What the guard does NOT protect.** It covers commands **typed in an
+> interactive shell**. It does **not** cover topgrade. Topgrade calls
+> `/usr/bin/sudo -E -H .../gem update --system` as a **subprocess**: no shell
+> function is inherited into it, so nothing in `guard.zsh` can stop it. Topgrade
+> is protected by two other things, and only by those two:
+>
+> 1. `~/.config/topgrade.toml` disables the `gem` and `ruby_gems` steps.
+> 2. `mac-routine.sh` records root-owned counts and `gem -v` between every step
+>    and stops the routine if either changes.
+>
+> Any other program that shells out to sudo needs the same treatment.
+
 If a root-owned file appears anyway, the fix — which needs your password — is:
 
 ```bash

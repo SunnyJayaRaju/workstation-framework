@@ -80,15 +80,29 @@ rgh_site_ruby_files() {
     find "$root/lib/ruby/site_ruby" -type f 2>/dev/null
 }
 
-# The RubyGems version the active ruby actually loads, read out of the
-# rubygems.rb it required. Read from the LOADED file rather than from a guessed
-# path: /opt/homebrew/lib/ruby is not a symlink on this machine, so a hardcoded
-# path would be a guess, and the loaded file is the authority either way.
+# The RubyGems version the Homebrew Ruby SHIPS - read from the stdlib copy in
+# rubylibdir, which is inside the keg and which site_ruby cannot shadow.
+#
+# The previous version read $LOADED_FEATURES, i.e. whatever `require "rubygems"`
+# happened to load, and compared it against `gem -v`. Those are the same file,
+# so the check compared a value against itself and could NEVER fail. Measured
+# on 2026-10-10:
+#   $LOAD_PATH index of sitelibdir (site_ruby) = 1
+#   $LOAD_PATH index of rubylibdir (Cellar)   = 6
+# Ruby takes the first match, so an override in site_ruby wins, `gem -v` then
+# reports the OVERRIDE's version, and both sides of the old comparison followed
+# the override together. Proof: with a throwaway rubygems.rb first on RUBYLIB,
+# `gem -v` reported 9.9.9 where the baseline reported 4.0.20.
+#
+# rubylibdir is the right constant precisely because it is a different directory
+# from sitelibdir. On this machine:
+#   rubylibdir = /opt/homebrew/Cellar/ruby/4.0.7_1/lib/ruby/4.0.0
+#   sitelibdir = /opt/homebrew/lib/ruby/site_ruby/4.0.0
 rgh_shipped_gem_version() {
     local ruby_bin="${1:-ruby}" path
     command -v "$ruby_bin" >/dev/null 2>&1 || return 0
-    # shellcheck disable=SC2016  # Ruby, not bash: $LOADED_FEATURES is Ruby's
-    path=$("$ruby_bin" -e 'require "rubygems"; print $LOADED_FEATURES.grep(/rubygems\.rb$/).first' 2>/dev/null) || return 0
+    # shellcheck disable=SC2016  # Ruby, not bash: RbConfig::CONFIG is Ruby's
+    path=$("$ruby_bin" -e 'require "rbconfig"; print File.join(RbConfig::CONFIG["rubylibdir"], "rubygems.rb")' 2>/dev/null) || return 0
     [ -n "$path" ] && [ -r "$path" ] || return 0
     grep -m1 -E '^[[:space:]]*VERSION[[:space:]]*=' "$path" 2>/dev/null |
         sed -E 's/.*"([^"]+)".*/\1/'
