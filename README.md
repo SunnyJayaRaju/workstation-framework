@@ -170,18 +170,18 @@ Release
 
 # Technology Stack
 
-| Category | Technology |
-|-----------|------------|
-| Operating System | macOS |
-| Shell | Bash |
-| Version Control | Git |
-| Repository Hosting | GitHub |
-| CI/CD | GitHub Actions |
-| Testing | Bats |
-| Static Analysis | ShellCheck |
-| Formatting | shfmt |
-| Editor | Visual Studio Code |
-| Documentation | Markdown |
+| Category           | Technology         |
+| ------------------ | ------------------ |
+| Operating System   | macOS              |
+| Shell              | Bash               |
+| Version Control    | Git                |
+| Repository Hosting | GitHub             |
+| CI/CD              | GitHub Actions     |
+| Testing            | Bats               |
+| Static Analysis    | ShellCheck         |
+| Formatting         | shfmt              |
+| Editor             | Visual Studio Code |
+| Documentation      | Markdown           |
 
 ---
 
@@ -323,18 +323,115 @@ No repository files need to be modified for temporary configuration changes.
 
 # Available Utilities
 
-| Script | Description |
-|---------|-------------|
-| `backup.sh` | Create timestamped backups of supported configuration files. |
-| `check-project.sh` | Validate repository structure and required project files. |
-| `repo-clean.sh` | Remove temporary development artifacts safely. |
-| `doctor.sh` | Diagnose framework and workstation health. |
-| `install.sh` | Install framework utilities into the local environment. |
-| `restore.sh` | Restore the most recent configuration backup. |
-| `shell-quality.sh` | Run Bash validation, ShellCheck, and formatting checks. |
-| `sync.sh` | Verify synchronization with the remote Git repository. |
-| `uninstall.sh` | Remove framework utilities from the local system. |
-| `update.sh` | Update an installed framework and perform validation. |
+| Script             | Description                                                                                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `backup.sh`        | Create timestamped backups of supported configuration files.                                                                      |
+| `check-project.sh` | Validate repository structure and required project files.                                                                         |
+| `repo-clean.sh`    | Remove temporary development artifacts safely.                                                                                    |
+| `doctor.sh`        | Diagnose framework and workstation health.                                                                                        |
+| `install.sh`       | Install framework utilities into the local environment.                                                                           |
+| `mac-routine.sh`   | Run topgrade, mo clean, brew doctor and brew cleanup in order, measuring root-owned files and the gem version between every step. |
+| `restore.sh`       | Restore the most recent configuration backup.                                                                                     |
+| `shell-quality.sh` | Run Bash validation, ShellCheck, and formatting checks.                                                                           |
+| `sync.sh`          | Verify synchronization with the remote Git repository.                                                                            |
+| `uninstall.sh`     | Remove framework utilities from the local system.                                                                                 |
+| `update.sh`        | Update an installed framework and perform validation.                                                                             |
+
+---
+
+# Ruby and Homebrew: three rules
+
+These exist because of a real event on **2026-09-16**. A RubyGems **4.0.21**
+source tree — 591 files — was written into
+`/opt/homebrew/lib/ruby/site_ruby/4.0.0/` with **root ownership**, at
+`2026-09-16 14:48:56`. Homebrew's Ruby ships **4.0.20**, so that tree was an
+override, not part of the keg. The root-owned files then blocked `brew link`
+and `brew cleanup`, and the weekly routine could not finish.
+
+**Which process issued that command is still unproven.** The zsh history has no
+timestamps, its oldest per-session file begins 25 Sep, and macOS keeps no sudo
+log. Do not repeat that claim as fact.
+
+## 1. Never use `sudo` with `gem` or `brew`
+
+```bash
+brew install <name>     # yes
+sudo gem install <name> # never: writes into /opt/homebrew as root
+```
+
+Homebrew owns Ruby's gems. `sudo gem` and `sudo brew` are refused by
+`~/.config/zsh/guard.zsh`, which is loaded from `~/.zshrc`.
+
+If a root-owned file appears anyway, the fix — which needs your password — is:
+
+```bash
+sudo find /opt/homebrew -user root -exec chown -h "$(whoami)":admin {} +
+```
+
+## 2. Never run `gem update --system`
+
+Against a Homebrew Ruby it installs a whole RubyGems source tree into
+`site_ruby`, shadowing the one the keg ships. It is also the command the
+interpreter's `ruby_gems` step runs under sudo.
+
+Homebrew's Ruby ships RubyGems with the keg. Upgrade gems individually with
+`gem install <name>`; upgrade Ruby with `brew upgrade ruby`.
+
+If an override does appear, move it aside rather than deleting it:
+
+```bash
+TS=$(date +%Y%m%d-%H%M%S); mkdir -p ~/Developer/Backups/site_ruby-stale-$TS
+mv /opt/homebrew/lib/ruby/site_ruby/* ~/Developer/Backups/site_ruby-stale-$TS/
+# undo: mv ~/Developer/Backups/site_ruby-stale-$TS/* /opt/homebrew/lib/ruby/site_ruby/
+```
+
+## 3. Run the routine through `mac-routine.sh`
+
+```bash
+mac-routine.sh          # the real thing
+mac-routine.sh --dry-run # measure only
+```
+
+It runs **topgrade → mo clean → brew doctor → brew cleanup** and, between
+every step, records two numbers: how many files under `/opt/homebrew` and
+`~/.gem` are owned by root, and what `gem -v` reports. If either changes it
+**stops**, prints the step responsible, the new files, and the fix command.
+Nothing after that step runs.
+
+It never calls `sudo`. It passes topgrade `--no-ask-retry` so the
+"Retry? (y)es/(N)o/(s)hell/(q)uit" prompt cannot hang it, and adds
+`--disable containers` when no container runtime is answering.
+
+### Bypassing the guard
+
+The guard is bypassed with an explicit environment variable, deliberately and
+per-invocation:
+
+```bash
+ALLOW_RISKY_GEM=1 sudo gem install <name>
+```
+
+Run `bash ~/Developer/Tools/scripts/verify-setup.sh` afterwards and read the
+**Ruby/gem health** section.
+
+### What the harness checks
+
+`lib/ruby_gem_health.sh` is the single implementation, used by
+`verify-setup.sh`, by `mac-routine.sh` between steps, and by
+`tests/ruby-gem-guard.bats`. It reports:
+
+| Verdict | Condition                                                                                                             |
+| ------- | --------------------------------------------------------------------------------------------------------------------- |
+| FAIL    | any root-owned file under `/opt/homebrew` or `~/.gem`                                                                 |
+| FAIL    | `gem -v` differs from the RubyGems version the active Homebrew Ruby ships (means a `site_ruby` override)              |
+| FAIL    | `site_ruby` contains files (an empty directory is healthy)                                                            |
+| FAIL    | `brew doctor` reports an unlinked or unreadable keg                                                                   |
+| FAIL    | a `~/.gem` plugin points at a path that no longer exists, or a `~/.gem` command's shebang names a missing interpreter |
+| WARN    | two versions of the same gem inside `~/.gem` (Homebrew's bundled/default gems are excluded by design)                 |
+| INFO    | the interpreter `~/.gem/ruby/*/bin` points at                                                                         |
+
+Every FAIL prints the exact fix. **The harness never runs `sudo`** — it prints
+the command and you run it.
 
 ---
 
@@ -364,13 +461,13 @@ The objective is to maintain a repository where every change is reproducible, re
 
 The project uses a Makefile to simplify routine tasks.
 
-| Command | Purpose |
-|----------|---------|
-| `make all` | Execute the complete quality gate. |
-| `make test` | Run the Bats test suite. |
-| `make lint` | Run ShellCheck validation. |
-| `make doctor` | Execute workstation diagnostics. |
-| `make check` | Verify repository structure. |
+| Command       | Purpose                            |
+| ------------- | ---------------------------------- |
+| `make all`    | Execute the complete quality gate. |
+| `make test`   | Run the Bats test suite.           |
+| `make lint`   | Run ShellCheck validation.         |
+| `make doctor` | Execute workstation diagnostics.   |
+| `make check`  | Verify repository structure.       |
 
 Before every commit, run:
 
