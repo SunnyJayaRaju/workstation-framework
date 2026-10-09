@@ -373,11 +373,23 @@ rgh_check_shebang_targets() {
 
 # Run every check, in order, each printing one verdict line.
 rgh_report() {
-    rgh_check_root_ownership
-    rgh_check_gem_version_parity
-    rgh_check_site_ruby_empty
-    rgh_check_brew_kegs
-    rgh_check_gem_wiring
-    rgh_check_duplicate_gems
-    rgh_check_shebang_targets
+    # Every check runs, and the return value is the OR of them all.
+    #
+    # The list form returned only the LAST check's status, and the last check is
+    # `rgh_check_shebang_targets` - an INFO line that always succeeds. So a run
+    # in which the ownership check FAILed still exited 0. The verdicts printed
+    # were correct; the exit code, which is what a caller scripts against, was
+    # a false all-clear. Accumulating with `||` also guarantees every check runs
+    # (no early return), so one FAIL never hides a second.
+    local rc=0
+    rgh_check_root_ownership || rc=1
+    rgh_check_gem_version_parity || rc=1
+    rgh_check_site_ruby_empty || rc=1
+    rgh_check_brew_kegs || rc=1
+    rgh_check_gem_wiring || rc=1
+    # WARN only. Kept in the accumulation so a future change to its return
+    # value cannot silently start passing through as a FAIL.
+    rgh_check_duplicate_gems || rc=1
+    rgh_check_shebang_targets || rc=1
+    return "$rc"
 }

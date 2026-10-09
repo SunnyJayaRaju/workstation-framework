@@ -75,6 +75,30 @@ check() { bash -c 'source "$1"; "$2"' _ "$RGH_LIB" "$1"; }
     [[ "$output" == *"PASS  no duplicate gem versions inside ~/.gem"* ]]
 }
 
+@test "rgh_report exits non-zero when only the FIRST check fails" {
+    # The precise regression: rgh_report returned the LAST check's status, and
+    # the last check is the INFO shebang line, which always succeeds. Damaging
+    # only the ownership check therefore produced correct verdicts and a
+    # misleading exit 0.
+    export RGH_ROOT_USER="$(id -un)" # stand in for root; see the note in setup
+    printf 'tampered\n' >"${RGH_HOMEBREW_ROOT}/lib/ruby/gems/stray"
+
+    run report
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"FAIL  root-owned entries"* ]]
+    # Everything else must still have run: one FAIL may not hide the rest.
+    [[ "$output" == *"PASS  gem 4.0.20 matches"* ]]
+    [[ "$output" == *"PASS  no duplicate gem versions"* ]]
+    # The fixture has no commands in bin/, so the last check prints its empty
+    # variant. Either way, seeing an INFO line proves it ran.
+    [[ "$output" == *"INFO  no ~/.gem/ruby/*/bin commands to report"* ]]
+}
+
+@test "rgh_report exits 0 when every check passes" {
+    run report
+    [ "$status" -eq 0 ]
+}
+
 @test "the shebang target is reported as INFO, never FAIL" {
     printf '#!/opt/homebrew/opt/ruby/bin/ruby\n' >"${RGH_GEM_HOME}/ruby/4.0.0/bin/rubocop"
     run report
@@ -244,7 +268,10 @@ EOF
     export GEM_REPORT_VERSION=4.0.21
 
     run report
-    [ "$status" -eq 0 ] # rgh_report returns the last check's status
+    # Non-zero: rgh_report returns the OR of every check, so one FAIL is enough.
+    # It used to return only the LAST check's status, and the last check is an
+    # INFO line that always succeeds - a false all-clear for the caller.
+    [ "$status" -eq 1 ]
     [[ "$output" == *"FAIL  root-owned entries"* ]]
     [[ "$output" == *"FAIL  gem reports 4.0.21"* ]]
     [[ "$output" == *"FAIL  site_ruby contains file(s)"* ]]
