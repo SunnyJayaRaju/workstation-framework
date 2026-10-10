@@ -337,6 +337,23 @@ EOF
 # mac-routine.sh
 # ===========================================================================
 
+# Fails loudly if any protected binary reachable on PATH is not the suite-wide
+# fake or one of this file's own shims. Split out of setup_routine so it can be
+# pointed at a BAD PATH and seen to fail - a guard that has never failed is not
+# known to work.
+assert_protected_tools_fake() {
+    local _tool _resolved
+    for _tool in sudo gem brew; do # safety: shim names, not a command
+        _resolved="$(command -v "$_tool" || printf '<not found>')"
+        if ! is_fake_path "$_resolved"; then
+            printf 'UNSAFE PATH: %s resolves to %s\n' "$_tool" "$_resolved" >&2
+            printf '  expected a path under %s, %s or %s/bin\n' \
+                "$FAKE_BIN_DIR" "$SHIM" "$RT" >&2
+            return 1
+        fi
+    done
+}
+
 setup_routine() {
     RT="${BATS_TEST_TMPDIR}/routine"
     mkdir -p "$RT/bin"
@@ -359,11 +376,44 @@ EOF
         chmod +x "${RT}/bin/$c"
     done
     # Hermetic PATH: the shims, then the fixture's ruby/gem/brew stubs from
-    # setup(), then the system utilities - and NOT /opt/homebrew. With the host
+    # setup(), then the suite-wide fake bin from test_helper, then the system
+    # utilities - and NOT /opt/homebrew. With the host
     # PATH the real `docker` and `orb` answered the probe, so "is a container
     # runtime running" was decided by this Mac rather than by the test.
-    export PATH="${RT}/bin:${SHIM}:/usr/bin:/bin"
+    #
+    # ${FAKE_BIN_DIR} is the part that is easy to lose. ${RT}/bin and ${SHIM}
+    # supply topgrade, mo, brew, ruby and gem, and NEITHER supplies sudo. This
+    # line used to end at /usr/bin, which reset PATH and dropped the fence
+    # test_helper installed, so sudo fell through to the real /usr/bin/sudo -
+    # the one thing these tests must never reach.
+    export PATH="${RT}/bin:${SHIM}:${FAKE_BIN_DIR}:/usr/bin:/bin"
     export RGH_LIB="${SCRIPTS_DIR}/lib/ruby_gem_health.sh"
+
+    # Assert the fence here rather than in each test, so every test in this file
+    # inherits it and a broken PATH fails once, loudly, instead of quietly in
+    # whichever test happened to reach a protected binary first.
+    assert_protected_tools_fake
+}
+
+@test "setup_routine's PATH guard fires on a PATH that reaches the real binaries" {
+    setup_routine
+    # Positive: the PATH setup_routine built is safe.
+    assert_protected_tools_fake
+
+    # Negative, in a subshell so a bad PATH cannot leak into anything after it.
+    # `command -v` only resolves a name; it does not run the binary.
+    if (
+        export PATH="/opt/homebrew/bin:/usr/bin:/bin"
+        assert_protected_tools_fake
+    ); then
+        echo "the guard accepted the real binaries" >&2
+        return 1
+    fi
+
+    # And the fences the wrapper relies on are the ones actually in place.
+    [[ "$(command -v sudo)" == "${FAKE_BIN_DIR}/sudo" ]]
+    [[ "$(command -v brew)" == "${RT}/bin/brew" ]]
+    [[ "$(command -v gem)" == "${SHIM}/gem" ]]
 }
 
 @test "mac-routine runs the four steps in order" {
@@ -379,9 +429,12 @@ EOF
     [[ "$output" == *"(dry run: not executed)"* ]]
     # brew doctor DOES run: it is the read-only probe inside the final health
     # report, and a dry run that measures nothing would prove nothing.
-    ! grep -q '^topgrade' "${RT}/calls"
-    ! grep -q '^mo ' "${RT}/calls"
-    ! grep -q '^brew cleanup' "${RT}/calls"
+    run grep -q '^topgrade' "${RT}/calls"
+    [ "$status" -ne 0 ]
+    run grep -q '^mo ' "${RT}/calls"
+    [ "$status" -ne 0 ]
+    run grep -q '^brew cleanup' "${RT}/calls"
+    [ "$status" -ne 0 ]
 }
 
 @test "mac-routine measures before the first step and after every step" {
@@ -441,15 +494,18 @@ EOF
     [[ "$output" == *"sudo find"* ]]
     [[ "$output" == *"No step after this one was run."* ]]
     # The steps after the damage must not have run.
-    ! grep -q '^brew' "${RT}/calls"
+    run grep -q '^brew' "${RT}/calls"
+    [ "$status" -ne 0 ]
 }
 
 @test "mac-routine never executes sudo" {
     setup_routine
     run bash "${SCRIPTS_DIR}/mac-routine.sh"
-    # Nothing named sudo exists on this PATH at all, so if the wrapper ever
-    # tried to escalate the run would fail loudly rather than silently prompt.
-    ! grep -q '^sudo' "${RT}/calls"
+    # Nothing named sudo is provided by ${RT}/bin or ${SHIM}, so `sudo` here
+    # resolves to the suite-wide fake: a recorder that exits 0. The wrapper must
+    # therefore never call it - the fake's log stays empty.
+    run grep -q '^sudo' "${RT}/calls"
+    [ "$status" -ne 0 ]
     run grep -nE '^[[:space:]]*sudo[[:space:]]' "${SCRIPTS_DIR}/mac-routine.sh"
     [ "$status" -ne 0 ]
 }

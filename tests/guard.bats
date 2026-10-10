@@ -364,7 +364,12 @@ sudo_refused() {
     local commands
     commands="$(grep -c '^Dry running: ' "$fixture")"
     [ "$commands" -ge 2 ]
-    ! grep -qE '^Done|^Updated|^Installing' "$fixture"
+    # Enforced form. A bare `! grep` is only checked by bats when it is the LAST
+    # statement of the test; used mid-test, errexit ignores it and the assertion
+    # can never fail. Measured on bats-core 1.14.0: a mid-test `! grep` that
+    # should fail reports ok. `run` + an explicit status test always fires.
+    run grep -qE '^Done|^Updated|^Installing' "$fixture"
+    [ "$status" -ne 0 ]
 }
 
 @test "the real topgrade config disables both gem steps" {
