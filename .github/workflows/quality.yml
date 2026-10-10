@@ -68,7 +68,8 @@ jobs:
           sudo apt-get install -y \
             shellcheck=0.9.0-1 \
             shfmt=3.8.0-1 \
-            bats=1.10.0-1
+            bats=1.10.0-1 \
+            zsh=5.9-6ubuntu2
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -104,6 +105,19 @@ jobs:
       - name: Verify shell formatting
         run: |
           find scripts templates -type f -name "*.sh" -exec shfmt -d -i 4 -ci {} +
+
+      # templates/guard.zsh is zsh, not bash: `bash -n` and shellcheck both
+      # skip it, so without this its syntax was never checked anywhere.
+      - name: Verify zsh syntax
+        run: |
+          if command -v zsh >/dev/null 2>&1; then
+            zsh --version
+            zsh -n templates/guard.zsh
+            echo "zsh -n templates/guard.zsh: OK"
+          else
+            echo "zsh is not installed: templates/guard.zsh cannot be syntax-checked" >&2
+            exit 1
+          fi
 
       # tests/guard.bats sources the guard into a real zsh. If zsh is missing
       # the test SKIPS, and a silent skip looks exactly like a pass. Print the

@@ -34,7 +34,14 @@ setup() {
     # The only reason to skip is a missing zsh. A guard that is not being
     # tested because the machine is not set up is a guard nobody is testing.
     if [ ! -x /bin/zsh ]; then
-        skip "zsh is not installed on this runner: /bin/zsh does not exist, and this test must source the guard into a real zsh to exercise its functions"
+        if [ "${CI:-}" = "true" ]; then
+            # On CI a missing zsh is a broken runner, not an absent optional
+            # tool: quality.yml pins zsh=5.9-6ubuntu2 on ubuntu-24.04 and
+            # macOS ships it. Skipping there would hide the breakage.
+            echo "CI: /bin/zsh is missing on this runner. quality.yml installs zsh with an exact pin; this is a broken runner, not a reason to skip." >&2
+            return 1
+        fi
+        skip "zsh is not installed on this machine (/bin/zsh absent); this test must source the guard into a real zsh to exercise its functions"
     fi
 
     SHIMDIR="${BATS_TEST_TMPDIR}/shim"
@@ -382,9 +389,30 @@ sudo_refused() {
     [ "$status" -ne 0 ]
 }
 
-@test "the real topgrade config disables both gem steps" {
-    local cfg="$HOME/.config/topgrade.toml"
-    [ -r "$cfg" ] || skip "no topgrade config at $cfg"
+@test "the guard's topgrade-config check disables both gem steps" {
+    # The same two greps the check itself performs, run against a committed
+    # fixture. The version this replaces asserted the state of ONE machine's
+    # ~/.config/topgrade.toml and skipped wherever that file was absent, so on
+    # CI the logic it covered was never executed. `make verify-machine` now runs
+    # those greps against the real file, off-line and on this Mac only.
+    local cfg="${PROJECT_ROOT}/tests/fixtures/topgrade-sample.toml"
+    [ -r "$cfg" ] || {
+        echo "missing fixture: $cfg" >&2
+        return 1
+    }
     grep -qE '^[[:space:]]*disable[[:space:]]*=.*"gem"' "$cfg"
     grep -qE '^[[:space:]]*disable[[:space:]]*=.*ruby_gems' "$cfg"
+}
+
+@test "a topgrade config that does NOT disable the gem steps is caught" {
+    # The other half: a fixture with the steps enabled must not pass the greps.
+    # Without this the test above could pass for a pattern that matches anything.
+    local dir="${BATS_TEST_TMPDIR}/topgrade"
+    mkdir -p "$dir"
+    local cfg="${dir}/enabled.toml"
+    printf '[misc]\ndisable = ["rust"]\n' >"$cfg"
+    run grep -qE '^[[:space:]]*disable[[:space:]]*=.*"gem"' "$cfg"
+    [ "$status" -ne 0 ]
+    run grep -qE '^[[:space:]]*disable[[:space:]]*=.*ruby_gems' "$cfg"
+    [ "$status" -ne 0 ]
 }

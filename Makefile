@@ -5,6 +5,7 @@
 	help \
 	test \
 	test-bash32 \
+	verify-machine \
 	ci-local \
 	lint \
 	format \
@@ -87,11 +88,68 @@ ci-local: ## Reproduce CI locally: versions, then syntax, shellcheck, shfmt, bat
 	@echo
 	@echo "ci-local: all steps passed."
 
-syntax: ## Check Bash syntax of every script
+syntax: ## Check Bash syntax of every script, and zsh syntax of the guard
 	find scripts templates -type f -name "*.sh" -exec bash -n {} +
+	@if command -v zsh >/dev/null 2>&1; then \
+		echo "zsh -n templates/guard.zsh"; \
+		zsh -n templates/guard.zsh; \
+	else \
+		echo "SKIPPED zsh -n templates/guard.zsh: zsh is not installed on this machine."; \
+		echo "  The guard cannot be syntax-checked without zsh. CI installs it."; \
+	fi
 
 lint: ## Run ShellCheck
 	find scripts templates -type f -name "*.sh" -exec shellcheck -x {} +
+
+# Read-only. NOT part of CI and NOT part of ci-local: it asserts the state of
+# THIS machine, which is exactly what the suite stopped asserting so that it
+# could run anywhere.
+#
+#   (a) the guard that runs here still matches the one in the repository
+#   (b) topgrade really has both gem steps disabled here
+#
+# Neither check is allowed to repair anything. The whole point is to tell you
+# the two have drifted, not to make them agree.
+verify-machine: ## Check THIS machine's guard and topgrade config against the repo (read-only)
+	@echo "=== (a) installed guard vs templates/guard.zsh ==="
+	@installed="$$HOME/.config/zsh/guard.zsh"; \
+	repo="templates/guard.zsh"; \
+	hdr=17; \
+	if [ ! -r "$$installed" ]; then \
+		echo "  DIFFERENT: $$installed does not exist."; \
+		echo "    nothing is installed; see the README for the two commands that activate the guard"; \
+	elif tail -n +$$((hdr + 1)) "$$repo" | cmp -s - "$$installed"; then \
+		echo "  MATCH: the installed guard is byte-identical to the repo copy below its $$hdr-line header"; \
+	else \
+		echo "  DIFFERENT: the installed guard has drifted from the repo copy."; \
+		echo "    first differing line (repo vs installed):"; \
+		awk -v h="$$hdr" 'FNR==NR { if (FNR > h) a[FNR-h] = $$0; next } { b[FNR] = $$0 } \
+			END { n = (length(a) > length(b)) ? length(a) : length(b); \
+			      for (i = 1; i <= n; i++) if (a[i] != b[i]) { \
+			        printf "      line %d (repo body line %d):\n", i, i; \
+			        printf "        repo:      %s\n", a[i]; \
+			        printf "        installed: %s\n", b[i]; \
+			        exit } \
+			      print "        (files differ only in trailing content)" }' \
+			"$$repo" "$$installed"; \
+		echo "    to re-activate the repo version:"; \
+		echo "      cp $$repo $$installed"; \
+	fi
+	@echo
+	@echo "=== (b) topgrade config disables both gem steps ==="
+	@cfg="$$HOME/.config/topgrade.toml"; \
+	if [ ! -r "$$cfg" ]; then \
+		echo "  UNKNOWN: no topgrade config at $$cfg"; \
+	elif grep -qE '^[[:space:]]*disable[[:space:]]*=.*"gem"' "$$cfg" \
+		&& grep -qE '^[[:space:]]*disable[[:space:]]*=.*ruby_gems' "$$cfg"; then \
+		echo "  OK: 'gem' and 'ruby_gems' are both disabled in $$cfg"; \
+	else \
+		echo "  PROBLEM: $$cfg does not disable both gem steps."; \
+		echo "    topgrade would reach for sudo gem update --system. Add them to disable:"; \
+		echo "      disable = [\"gem\", \"ruby_gems\"]"; \
+	fi
+	@echo
+	@echo "verify-machine: read-only. Nothing was changed."
 
 format: ## Format shell scripts
 	find scripts templates -type f -name "*.sh" -exec shfmt -w -i 4 -ci {} +
