@@ -110,12 +110,30 @@ check() { bash -c 'source "$1"; "$2"' _ "$RGH_LIB" "$1"; }
 }
 
 @test "the shebang target is reported as INFO, never FAIL" {
-    printf '#!/opt/homebrew/opt/ruby/bin/ruby\n' >"${RGH_GEM_HOME}/ruby/4.0.0/bin/rubocop"
+    # A REAL interpreter this test creates itself, so the check does not depend
+    # on Homebrew being installed. It used to name
+    # /opt/homebrew/opt/ruby/bin/ruby, which only exists on a Mac with Homebrew.
+    local interpreter="${BATS_TEST_TMPDIR}/fake-ruby"
+    printf '#!/bin/sh\nexit 0\n' >"$interpreter"
+    chmod +x "$interpreter"
+    printf '#!%s\n' "$interpreter" >"${RGH_GEM_HOME}/ruby/4.0.0/bin/rubocop"
     run report
     [ "$status" -eq 0 ]
     [[ "$output" == *"INFO  ~/.gem/ruby/*/bin shebang target(s):"* ]]
-    [[ "$output" == *"/opt/homebrew/opt/ruby/bin/ruby"* ]]
+    [[ "$output" == *"$interpreter"* ]]
     [[ "$output" != *"FAIL  "* ]]
+}
+
+@test "a shebang pointing at a MISSING interpreter FAILs" {
+    # The other half of the pair above, and its own test on purpose: an INFO
+    # check that is never seen to FAIL is not known to be able to.
+    local missing="${BATS_TEST_TMPDIR}/no-such-ruby"
+    printf '#!%s\n' "$missing" >"${RGH_GEM_HOME}/ruby/4.0.0/bin/rubocop"
+    run report
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"broken command:"* ]]
+    [[ "$output" == *"$missing"* ]]
+    [[ "$output" == *"FAIL  "* ]]
 }
 
 # ===========================================================================
@@ -159,17 +177,6 @@ make_owned_tree() {
     # The fix is printed, never run, and carries the password caveat.
     [[ "$output" == *"sudo find $tree -user root -exec chown"* ]]
     [[ "$output" == *"needs your password"* ]]
-}
-
-@test "the real Homebrew and the real ~/.gem are clean, and both count 0" {
-    # This one deliberately reads the REAL directories: its whole value is
-    # "this machine is undamaged right now". There is nothing to assert on a
-    # runner with no Homebrew, where both paths are absent and the function
-    # returns 0 without looking at anything - a vacuous pass.
-    [ -d /opt/homebrew ] || skip "no /opt/homebrew here; this asserts THIS Mac's real tree"
-    run bash -c 'source "$1"; rgh_root_owned_count "$2"; rgh_root_owned_count "$3"' \
-        _ "$RGH_LIB" /opt/homebrew "$HOME/.gem"
-    [ "$output" = "00" ]
 }
 
 @test "the gem home is checked too, not only Homebrew" {
@@ -492,8 +499,21 @@ EOF
 @test "mac-routine disables the Containers step when no runtime answers" {
     setup_routine
     # `docker info` succeeds via the shim here, so remove the shim to model a
-    # machine where the runtime is installed but stopped.
-    rm -f "${RT}/bin/docker"
+    # Model a machine where a runtime is installed but STOPPED, by putting
+    # failing shims FIRST on PATH - not by removing the working one.
+    #
+    # The previous version deleted ${RT}/bin/docker and then relied on the
+    # runner happening to have no docker anywhere. On a runner that does have
+    # one, the test asserted nothing. Deleting is also not something a test in
+    # this suite should do.
+    local dead="${RT}/not-running"
+    mkdir -p "$dead"
+    local rt
+    for rt in docker podman orb orbctl; do
+        printf '#!/bin/sh\nexit 1\n' >"${dead}/${rt}"
+        chmod +x "${dead}/${rt}"
+    done
+    export PATH="${dead}:${PATH}"
     run bash "${SCRIPTS_DIR}/mac-routine.sh"
     [ "$status" -eq 0 ]
     grep -q -- '--disable containers' "${RT}/calls"

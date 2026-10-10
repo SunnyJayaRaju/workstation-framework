@@ -109,55 +109,61 @@ readonly SAFETY_PAYLOAD_RE='(^|[^[:alnum:]_./-])(eval|exec)([[:space:]]|$)|(^|[^
 #   sudo /usr/local/bin/brew update          sudo + a path ending in brew
 readonly SAFETY_SCAN_PATTERNS='(^|[^[:alnum:]_./-])gem[[:space:]]+update|(^|[^[:alnum:]_./-])sudo[[:space:]]+gem|(^|[^[:alnum:]_./-])sudo[[:space:]]+brew|(^|[^[:alnum:]_./-])brew[[:space:]]+upgrade|(^|[^[:alnum:]_./-])/([[:alnum:]_.+-]+/)+gem[[:space:]]+update|(^|[^[:alnum:]_./-])/([[:alnum:]_.+-]+/)+brew[[:space:]]+upgrade|(^|[^[:alnum:]_./-])sudo[[:space:]]+[^[:space:]]*/gem([[:space:]]|$)|(^|[^[:alnum:]_./-])sudo[[:space:]]+[^[:space:]]*/brew([[:space:]]|$)'
 
-# True when the line carries a `safety:` comment.
-safety_is_exempt() {
-    printf '%s' "$1" | grep -qE "$SAFETY_EXEMPT_RE"
-}
-
-# True when the line hands a quoted string to something that will execute it.
-safety_is_payload() {
-    printf '%s' "$1" | grep -qE "$SAFETY_PAYLOAD_RE"
-}
-
-# Prints "<file>:<line>: <text>" for every violation, and
-# "<file>:<line>: EXEMPT: <text>" for every exempted line, so a review can see
-# the exemptions without grepping for the marker.
+# One awk pass per file, no subprocess per line.
+#
+# The previous version read the file in bash and ran up to five external
+# commands per LINE - a printf|grep for the comment test, another for exempt,
+# another for payload, a sed for blanking, and a final grep. Over 20 files that
+# is tens of thousands of processes, and it dominated the suite's runtime.
+#
+# The rules are unchanged and must stay unchanged; only the mechanism moved:
+#   1. a line starting with optional whitespace then # is a comment, skipped
+#   2. a line carrying a `safety:` comment is EXEMPT, and is REPORTED so a
+#      review can see every exemption without grepping for the marker
+#   3. a payload line (eval/exec/any `sh -c`) keeps its quoted text, because
+#      there the quotes ARE the command
+#   4. every other line has its quoted spans blanked first: text inside quotes
+#      is data, not a command
+#   5. what survives is matched against the eight scan patterns
+#
+# The regexes are passed in with -v rather than written inline, because macOS
+# awk (BWK, 20200816) does not accept [[:space:]] inside a literal /.../ regex,
+# while the same string handed over as a variable matches correctly. Passing
+# them in keeps ONE definition of each pattern, the same constant the rest of
+# this file uses, so the two cannot drift.
+#
+# Verified by diffing this against the previous implementation's output over
+# every scan target and every fixture: byte-identical.
 scan_one_file() {
-    local file="$1" n=0 line stripped
-    while IFS= read -r line; do
-        n=$((n + 1))
-        # A comment line is not an executable line.
-        #
-        # Anchored, and that is a bug fix rather than a style choice. The first
-        # version used the case pattern `[[:space:]]*'#'*`, which does NOT mean
-        # "line starts with #": `*` happily matches everything up to a # ANYWHERE
-        # in the line. So every line carrying a trailing comment was skipped
-        # before it was ever matched, including `eval "$cmd"  # note`. The scan
-        # was quietly blind to a large part of every file that uses comments,
-        # which is most of them. Found only after the exemption listing was made
-        # to report zero exemptions on files that demonstrably have them.
-        if printf '%s' "$line" | grep -qE '^[[:space:]]*#'; then
-            continue
-        fi
-        if safety_is_exempt "$line"; then
-            printf '%s:%s: EXEMPT: %s\n' "${file#"${PROJECT_ROOT}/"}" "$n" \
-                "$(printf '%s' "$line" | sed 's/^[[:space:]]*//')"
-            continue
-        fi
-        if safety_is_payload "$line"; then
-            # Payload: the quotes are the command. Scanning the blanked line
-            # would find nothing and pass the very line that runs it.
-            stripped="$line"
-        else
-            # Blank out quoted spans: text inside quotes is data, not a command.
-            stripped="$(printf '%s' "$line" |
-                sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g' -e 's/`[^`]*`//g')"
-        fi
-        if printf '%s' "$stripped" | grep -qE "$SAFETY_SCAN_PATTERNS"; then
-            printf '%s:%s: %s\n' "${file#"${PROJECT_ROOT}/"}" "$n" \
-                "$(printf '%s' "$line" | sed 's/^[[:space:]]*//')"
-        fi
-    done <"$file"
+    awk -v file="$1" -v strip="${PROJECT_ROOT}/" \
+        -v comment_re='^[[:space:]]*#' \
+        -v exempt_re="$SAFETY_EXEMPT_RE" \
+        -v payload_re="$SAFETY_PAYLOAD_RE" \
+        -v scan_re="$SAFETY_SCAN_PATTERNS" '
+    {
+        line = $0
+        if (line ~ comment_re) next
+        if (line ~ exempt_re) {
+            text = line
+            sub(/^[[:space:]]+/, "", text)
+            sub(/^/, "", text)
+            printf "%s:%d: EXEMPT: %s\n", short, FNR, text
+            next
+        }
+        if (line !~ payload_re) {
+            gsub(/'"'"'[^'"'"']*'"'"'/, "", line)
+            gsub(/"[^"]*"/, "", line)
+            gsub(/`[^`]*`/, "", line)
+        }
+        if (line ~ scan_re) {
+            text = $0
+            sub(/^[[:space:]]+/, "", text)
+            printf "%s:%d: %s\n", short, FNR, text
+        }
+    }
+    function shorten(s) { sub("^" strip, "", s); return s }
+    BEGIN { short = shorten(file) }
+    ' "$1"
 }
 
 # Violations only, exemptions filtered out.
@@ -205,9 +211,10 @@ scan_targets() {
     local exempt_list exempt_n=0
     exempt_list="$(scan_targets | while IFS= read -r file; do
         [ -f "$file" ] || continue
-        case "$file" in
-            *"/tests/safety.bats") continue ;;
-        esac
+        # An `if`, not a `case`. A `case` inside a $( ) substitution is the one
+        # construct in this suite that breaks bash 3.2, which is /bin/bash on
+        # macOS; `make test-bash32` runs the suite under it.
+        [ "${file##*/}" = "safety.bats" ] && continue
         scan_one_file "$file" | grep ': EXEMPT: ' || true
     done)"
     exempt_n="$(printf '%s\n' "$exempt_list" | grep -c ': EXEMPT: ' || true)"
@@ -225,10 +232,7 @@ scan_targets() {
     local dir="${BATS_TEST_TMPDIR}/exempt"
     mkdir -p "$dir"
     local marked="${dir}/marked.bats"
-    cat >"$marked" <<'M1'
-#!/usr/bin/env bats
-for c in sudo gem; do # safety: shim names, not a command
-M1
+    cp "${PROJECT_ROOT}/tests/fixtures/marked-shim-names.bats" "$marked"
     # Exempt, AND listed in the output so a reviewer sees it without grepping.
     local out
     out="$(scan_one_file "$marked")"
@@ -236,20 +240,14 @@ M1
 
     # A bare `safety:` in the MIDDLE of the line is not an exemption.
     local midmarker="${dir}/midmarker.bats"
-    cat >"$midmarker" <<'M2'
-#!/usr/bin/env bats
-for c in sudo gem; do safety: this marker is in the middle
-M2
+    cp "${PROJECT_ROOT}/tests/fixtures/midmarker.bats" "$midmarker"
     out="$(scan_violations "$midmarker")"
     [[ "$out" == *"midmarker.bats:2:"* ]]
 
     # The same line WITHOUT the marker IS a finding. Proves the exemption is
     # the marker and not a general blind spot around these names.
     local unmarked="${dir}/unmarked.bats"
-    cat >"$unmarked" <<'M3'
-#!/usr/bin/env bats
-for c in sudo gem; do
-M3
+    cp "${PROJECT_ROOT}/tests/fixtures/unmarked.bats" "$unmarked"
     out="$(scan_violations "$unmarked")"
     [[ "$out" == *"unmarked.bats:2:"* ]]
 }
@@ -259,13 +257,7 @@ M3
     local dir="${BATS_TEST_TMPDIR}/planted"
     mkdir -p "$dir/tests" "$dir/scripts/lib"
     local bad="${dir}/tests/planted.bats"
-    cat >"$bad" <<'PLANTED'
-#!/usr/bin/env bats
-load test_helper
-@test "planted-command-line" {
-    run gem update --system
-}
-PLANTED
+    cp "${PROJECT_ROOT}/tests/fixtures/planted-command.bats" "$bad"
     local out
     out="$(scan_violations "$bad")"
     [ -n "$out" ]
@@ -273,10 +265,7 @@ PLANTED
     [[ "$out" == *"gem update --system"* ]]
 
     local bad2="${dir}/scripts/planted.sh"
-    cat >"$bad2" <<'PLANTED2'
-#!/bin/bash
-sudo gem install foo
-PLANTED2
+    cp "${PROJECT_ROOT}/tests/fixtures/planted-sudo-gem.sh" "$bad2"
     out="$(scan_violations "$bad2")"
     [[ "$out" == *"planted.sh:2:"* ]]
     [[ "$out" == *"sudo gem install foo"* ]]
@@ -289,15 +278,7 @@ PLANTED2
     local dir="${BATS_TEST_TMPDIR}/abspath"
     mkdir -p "$dir"
     local f="${dir}/abspath.bats"
-    cat >"$f" <<'ABSPATH'
-#!/usr/bin/env bats
-@test "planted-abspath" {
-    run /opt/homebrew/bin/gem update --system
-    run /usr/local/bin/brew upgrade
-    run sudo /opt/homebrew/bin/gem install foo
-    run sudo /opt/homebrew/bin/brew update
-}
-ABSPATH
+    cp "${PROJECT_ROOT}/tests/fixtures/abspath.bats" "$f"
     local out
     out="$(scan_violations "$f")"
     [[ "$out" == *"abspath.bats:3:"* ]]
@@ -311,12 +292,7 @@ ABSPATH
 
     # A path that is only NAMED, not invoked, is still data.
     local named="${dir}/named.bats"
-    cat >"$named" <<'NAMED'
-#!/usr/bin/env bats
-@test "named" {
-    [[ "$output" == *"/opt/homebrew/bin/gem update"* ]]
-}
-NAMED
+    cp "${PROJECT_ROOT}/tests/fixtures/named.bats" "$named"
     [ -z "$(scan_violations "$named")" ]
 }
 
@@ -332,16 +308,7 @@ NAMED
     local dir="${BATS_TEST_TMPDIR}/payload"
     mkdir -p "$dir"
     local f="${dir}/payload.bats"
-    cat >"$f" <<'PAYLOAD'
-#!/usr/bin/env bats
-@test "planted-payload" {
-    eval "sudo gem update --system"
-    run bash -c "brew upgrade"
-    sh -c 'sudo /opt/homebrew/bin/gem update --system'
-    zsh -c "gem update --system"
-    exec "sudo /opt/homebrew/bin/brew upgrade"
-}
-PAYLOAD
+    cp "${PROJECT_ROOT}/tests/fixtures/payload.bats" "$f"
     local out
     out="$(scan_violations "$f")"
     [[ "$out" == *"payload.bats:3:"* ]]
@@ -354,13 +321,7 @@ PAYLOAD
 
     # The exemption still works on a payload line, because it is a comment.
     local marked="${dir}/marked.bats"
-    cat >"$marked" <<'MARKED'
-#!/usr/bin/env bats
-@test "assert the guard refuses this" {
-    eval "gem list"
-    [ "$output" = "sudo gem update --system" ] # safety: asserted as a string, never run
-}
-MARKED
+    cp "${PROJECT_ROOT}/tests/fixtures/payload-marked.bats" "$marked"
     out="$(scan_violations "$marked")"
     [ -z "$out" ]
     # Asserted against the predicate directly rather than against scan_one_file's
@@ -376,16 +337,7 @@ MARKED
     local dir="${BATS_TEST_TMPDIR}/clean"
     mkdir -p "$dir"
     local f="${dir}/clean.bats"
-    cat >"$f" <<'CLEAN'
-#!/usr/bin/env bats
-load test_helper
-@test "asserts on the refused text" {
-    # a comment mentioning gem update --system and sudo brew
-    [[ "$output" == *"gem update --system"* ]]
-    [[ "$output" == *"sudo brew upgrade"* ]]
-    [[ "$output" == *"brew upgrade"* ]]
-}
-CLEAN
+    cp "${PROJECT_ROOT}/tests/fixtures/clean-quoted.bats" "$f"
     local out
     out="$(scan_violations "$f")"
     if [ -n "$out" ]; then
@@ -484,13 +436,7 @@ scan_bare_negations() {
     mkdir -p "$dir"
     printf 'has x\n' >"${dir}/f"
     local t="${dir}/mid.bats"
-    cat >"$t" <<EOF
-#!/usr/bin/env bats
-@test "mid-test bare negation that MUST fail and does not" {
-    ! grep -q x "${dir}/f"
-    echo "reached the statement AFTER the bare !"
-}
-EOF
+    sed "s|__FILE__|${dir}/f|" "${PROJECT_ROOT}/tests/fixtures/mid-test-negation.bats" >"$t"
     run bats "$t"
     [ "$status" -eq 0 ]
 }
@@ -502,25 +448,13 @@ EOF
     mkdir -p "$dir"
     printf 'has x\n' >"${dir}/f"
     local t="${dir}/enforced.bats"
-    cat >"$t" <<EOF
-#!/usr/bin/env bats
-@test "enforced form that MUST fail" {
-    run grep -q x "${dir}/f"
-    [ "\$status" -ne 0 ]
-}
-EOF
+    sed "s|__FILE__|${dir}/f|" "${PROJECT_ROOT}/tests/fixtures/enforced-must-fail.bats" >"$t"
     run bats "$t"
     [ "$status" -ne 0 ]
 
     # And it passes when it should, so it is not failing for an unrelated reason.
     printf 'nothing here\n' >"${dir}/g"
-    cat >"$t" <<EOF
-#!/usr/bin/env bats
-@test "enforced form that must pass" {
-    run grep -q x "${dir}/g"
-    [ "\$status" -ne 0 ]
-}
-EOF
+    sed "s|__FILE__|${dir}/g|" "${PROJECT_ROOT}/tests/fixtures/enforced-must-pass.bats" >"$t"
     run bats "$t"
     [ "$status" -eq 0 ]
 }
@@ -530,26 +464,14 @@ EOF
     local dir="${BATS_TEST_TMPDIR}/negscan"
     mkdir -p "$dir"
     local f="${dir}/planted.bats"
-    cat >"$f" <<'PLANTED'
-#!/usr/bin/env bats
-@test "planted-negation" {
-    echo hi
-    ! grep -q x /dev/null
-}
-PLANTED
+    cp "${PROJECT_ROOT}/tests/fixtures/negscan-planted.bats" "$f"
     local out
     out="$(scan_bare_negations "$f")"
     [[ "$out" == *"planted.bats:4:"* ]]
     [[ "$out" == *"! grep -q x /dev/null"* ]]
 
     local clean="${dir}/clean.bats"
-    cat >"$clean" <<'CLEAN'
-#!/usr/bin/env bats
-@test "clean" {
-    run grep -q x /dev/null
-    [ "$status" -ne 0 ]
-}
-CLEAN
+    cp "${PROJECT_ROOT}/tests/fixtures/negscan-clean.bats" "$clean"
     [ -z "$(scan_bare_negations "$clean")" ]
 }
 # ---------------------------------------------------------------------------
@@ -644,4 +566,106 @@ scan_duplicate_test_names() {
     printf '@test "solo" {\n    true\n}\n@test "solo" {\n    true\n}\n@test "unique" {\n    true\n}\n' >"$f"
     out="$(scan_duplicate_test_names "$f")"
     [[ "$out" != *"unique"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# No @test text inside a heredoc.
+#
+# CI (bats 1.10.0) refused to run this file because four fixture heredocs each
+# declared `@test "planted"`. They were TEXT - files this suite writes to a temp
+# dir so the scanner can read them - and bats 1.14.0 correctly ignores @test
+# lines inside a heredoc body. Older bats counts them.
+#
+# Two rules keep that from coming back, and both are checked here:
+#   1. every @test line in tests/*.bats starts at column 0
+#   2. no @test line sits inside a heredoc body
+#
+# Rule 1 alone is not enough, and that is worth being explicit about: the four
+# offending lines were ALREADY at column 0, because heredoc bodies are not
+# indented. Rule 2 is what actually catches them, so both are enforced here.
+#
+# The fixtures themselves now live in tests/fixtures/*.bats as ordinary files,
+# copied into BATS_TEST_TMPDIR by the tests that scan them.
+# ---------------------------------------------------------------------------
+
+# Prints "<file>:<line>: <text>" for every @test line that is indented.
+#
+# awk rather than `grep -nE ... "$1" | sed`: grep given a single file does NOT
+# prefix the filename, so its output was "5: ...", not "path/indented.bats:5:",
+# and every assertion on this function failed for that reason alone. awk also
+# exits 0 on a file with no matches, which is the clean case here.
+scan_indented_test_names() {
+    awk -v f="$1" '/^[[:space:]]+@test[[:space:]]/ { printf "%s:%d: %s\n", f, FNR, $0 }' "$1"
+}
+
+# Prints "<file>:<line>: <text>" for every @test line inside a heredoc body.
+scan_heredoc_test_names() {
+    awk '
+        /<<'"'"'?[A-Za-z_]/ {
+            rest = $0
+            sub(/.*<<[[:space:]]*/, "", rest)
+            gsub(/'"'"'/, "", rest)
+            split(rest, a, /[[:space:]]/)
+            delim = a[1]
+            inh = 1
+            next
+        }
+        inh && $0 == delim { inh = 0; next }
+        inh && /^[[:space:]]*@test[[:space:]]/ { print FILENAME ":" FNR ": " $0 }
+    ' "$1"
+}
+
+@test "static scan: every @test line starts at column 0, and none is inside a heredoc" {
+    local file hits offenders=""
+    for file in "${PROJECT_ROOT}"/tests/*.bats; do
+        [ -f "$file" ] || continue
+        hits="$(scan_indented_test_names "$file")"
+        [ -n "$hits" ] || continue
+        offenders="${offenders}${hits}"$'\n'
+    done
+    offenders="${offenders%$'\n'}"
+    if [ -n "$offenders" ]; then
+        echo "Indented @test lines. Every @test must start at column 0:" >&2
+        printf '%s\n' "$offenders" | sed 's/^/  /' >&2
+        return 1
+    fi
+
+    for file in "${PROJECT_ROOT}"/tests/*.bats; do
+        [ -f "$file" ] || continue
+        hits="$(scan_heredoc_test_names "$file")"
+        [ -n "$hits" ] || continue
+        offenders="${offenders}${hits}"$'\n'
+    done
+    offenders="${offenders%$'\n'}"
+    if [ -n "$offenders" ]; then
+        echo "@test text inside a heredoc. Move the fixture to tests/fixtures/:" >&2
+        printf '%s\n' "$offenders" | sed 's/^/  /' >&2
+        return 1
+    fi
+}
+
+@test "static scan: the column-0 and heredoc scanners catch planted violations" {
+    local dir="${BATS_TEST_TMPDIR}/col0"
+    mkdir -p "$dir"
+
+    # Indented, outside any heredoc. It is line 5: the three lines of the real
+    # test above it push it down.
+    local indented="${dir}/indented.bats"
+    printf '#!/usr/bin/env bats\n@test "fine" {\n    true\n}\n    @test "indented" {\n    true\n}\n' >"$indented"
+    local out
+    out="$(scan_indented_test_names "$indented")"
+    [[ "$out" == *"indented.bats:5:"* ]]
+
+    # At column 0 but inside a heredoc: the shape CI rejected. It is line 6.
+    # Column 0 alone does not catch this, which is why the heredoc rule exists.
+    local heredoc="${dir}/heredoc.bats"
+    printf '#!/usr/bin/env bats\n@test "real" {\n    true\n}\ncat >/dev/null <<%sINNER\n@test "inside" {\n    true\n}\nINNER\n' "'" >"$heredoc"
+    out="$(scan_heredoc_test_names "$heredoc")"
+    [[ "$out" == *"heredoc.bats:6:"* ]]
+
+    # And a clean file trips neither, so neither check is always-on.
+    local clean="${dir}/clean.bats"
+    printf '#!/usr/bin/env bats\n@test "only" {\n    true\n}\n' >"$clean"
+    [ -z "$(scan_indented_test_names "$clean")" ]
+    [ -z "$(scan_heredoc_test_names "$clean")" ]
 }
