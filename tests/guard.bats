@@ -3,10 +3,11 @@
 load test_helper
 
 # ---------------------------------------------------------------------------
-# guard.zsh lives at ~/.config/zsh/guard.zsh, outside this repository, so it
-# has to be exercised the way it actually runs: sourced into a real zsh, with
-# `gem` and `sudo` shimmed as executables on PATH so the guard's own functions
-# stay in place and its pass-through path runs for real.
+# guard.zsh is committed at templates/guard.zsh, outside this repository's
+# scripts/ and tests/, so it has to be exercised the way it actually runs:
+# sourced into a real zsh, with `gem` and `sudo` shimmed as executables on PATH
+# so the guard's own functions stay in place and its pass-through path runs for
+# real.
 #
 # Nothing here can reach sudo or the real gem. The shims only print.
 #
@@ -22,9 +23,18 @@ load test_helper
 # ---------------------------------------------------------------------------
 
 setup() {
-    GUARD="${GUARD_ZSH:-$HOME/.config/zsh/guard.zsh}"
+    # The guard is under version control at templates/guard.zsh, so this test
+    # never depends on the machine's ~/.config being set up. Set GUARD_ZSH to
+    # point somewhere else - to check a copy that is actually installed.
+    GUARD="${GUARD_ZSH:-${PROJECT_ROOT}/templates/guard.zsh}"
     if [ ! -r "$GUARD" ]; then
-        skip "guard.zsh not present at $GUARD"
+        echo "MISSING GUARD: $GUARD is not readable; the test is vacuous without it" >&2
+        return 1
+    fi
+    # The only reason to skip is a missing zsh. A guard that is not being
+    # tested because the machine is not set up is a guard nobody is testing.
+    if [ ! -x /bin/zsh ]; then
+        skip "zsh is not installed on this runner: /bin/zsh does not exist, and this test must source the guard into a real zsh to exercise its functions"
     fi
 
     SHIMDIR="${BATS_TEST_TMPDIR}/shim"

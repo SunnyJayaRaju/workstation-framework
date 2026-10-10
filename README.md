@@ -135,6 +135,7 @@ Every change is verified using:
 
 - `make ci-local` prints your `bash`, `bats`, `shellcheck` and `shfmt` versions, warns when they differ from CI's pins, then runs CI's steps in order: `syntax`, `shellcheck -x`, `shfmt -d -i 4 -ci`, `bats tests`, `make check`, `make doctor`.
 - `make test-bash32` runs the whole suite under `/bin/bash`, which is bash 3.2 on macOS; it skips with a message on systems without `/bin/bash`.
+- The zsh guard lives at `templates/guard.zsh`; `install.sh` does not touch your shell files. To activate it: `cp templates/guard.zsh ~/.config/zsh/guard.zsh`, then `echo 'source ~/.config/zsh/guard.zsh' >> ~/.zshrc`.
 - Both mirror `.github/workflows/quality.yml`; if CI is red, run these before pushing.
 
 ---

@@ -6,12 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 ---
 
+## [Unreleased]
+
+Not yet released. VERSION stays at 2.2.1; this section collects work that has
+landed on a branch but has not been cut as a release.
+
+### Added
+
+- **`scripts/lib/ruby_gem_health.sh` and the Ruby/gem guard.**
+  On 2026-09-16 a root `gem update --system` wrote a 591-file RubyGems tree into
+  `/opt/homebrew/lib/ruby/site_ruby`, blocking `brew link` and `brew cleanup`
+  while every other check still read PASS. The new library checks root
+  ownership under Homebrew and `~/.gem`, `site_ruby` overrides, `gem -v`
+  against the RubyGems actually shipped by the active Homebrew Ruby, dangling
+  plugins and dead shebangs, and duplicate gem versions.
+- **`templates/guard.zsh`.** The zsh guard is now under version control instead
+  of living only in one machine's `~/.config/zsh`. It refuses `sudo` for `gem`
+  or `brew` by basename, refuses any unambiguous abbreviation of `gem update
+--system` (`--sy`, `--sys`, `--syst`, `--syste`), prints a refusal that names
+  the command refused, and prints a bypass line that is runnable as typed. It
+  covers interactive shells only and does not cover a program that shells out,
+  such as topgrade; that limit is documented in the file and asserted by test.
+- **`scripts/mac-routine.sh`.** Runs topgrade, `mo clean`, `brew doctor` and
+  `brew cleanup` in order, measuring root-owned counts and `gem -v` between
+  steps and stopping the routine the moment either drifts. Never uses `sudo`,
+  never deletes, passes `--no-ask-retry` so a prompt cannot hang it.
+- **`make ci-local`.** Prints the local `bash`, `bats`, `shellcheck` and `shfmt`
+  versions, warns when any differs from the pins in
+  `.github/workflows/quality.yml`, then runs CI's steps in order.
+- **`make test-bash32`.** Runs the whole suite under `/bin/bash`, which is bash
+  3.2 on macOS and older than anything a Linux CI runner has. Skips with a
+  clear message where `/bin/bash` does not exist.
+- **`tests/safety.bats`.** A suite-wide PATH fence puts recording fakes for
+  `gem`, `sudo` and `brew` in front of the real ones, plus a canary, a static
+  scan for commands that can damage the machine, a scan for mid-test bare `!`
+  negations that bats never checks, and one-pass scanners for duplicate
+  `@test` names and `@test` text inside heredocs.
+
+### Changed
+
+- **Every `.bats` file is machine-independent.** Fixtures live in
+  `tests/fixtures/`; the root-ownership tests build their own tree and stand in
+  for root with `RGH_ROOT_USER`; the container-runtime test puts failing shims
+  first on PATH instead of deleting a working one; the shebang test creates a
+  real interpreter. The one test that asserted the state of this machine was
+  removed from bats - that check still runs, through `rgh_report`.
+- **`make lint` uses `shellcheck -x`**, matching CI exactly. Without `-x` the
+  local target and the CI step were not the same command.
+- **CI runners are pinned** to `ubuntu-24.04` and `macos-15` with
+  `timeout-minutes: 15`, because the pinned apt package versions
+  (`shellcheck=0.9.0-1`, `shfmt=3.8.0-1`, `bats=1.10.0-1`) only exist on the
+  distribution they were taken from. `strategy.fail-fast` is `false`, so a
+  failure on one OS no longer hides the other.
+
+---
+
 ## [2.2.1] - 2026-10-05
 
 Patch release: the release pipeline only.
 
 - **Fixed: the release notes no longer leak the next version heading.**
-  The changelog-extraction awk script printed forward until the *next*
+  The changelog-extraction awk script printed forward until the _next_
   section rather than stopping at it, so a release body included the
   heading of whatever version followed the one being released. Extraction
   now ends at the first `## [` heading that is not the requested one, and
@@ -42,7 +97,7 @@ exercise the behaviour it claimed to cover.
   a SHA-256 of the copied content. `restore.sh` verifies a backup against its
   manifest before overwriting anything; a mismatch names the file, refuses it,
   and continues with the remaining sources. `--dry-run` reports the same
-  verdict, so it cannot be used to discover that a corrupt backup *would*
+  verdict, so it cannot be used to discover that a corrupt backup _would_
   have been installed. Manifests are written `600` via a temp file and rename,
   so a reader never sees a partial one, and a run that failed partway writes
   none.
@@ -88,7 +143,7 @@ exercise the behaviour it claimed to cover.
   paths ever touched.
 - **Test isolation.** The destructive-path tests resolve paths from the test's
   own temporary directory, so a regression cannot delete a real dotfile.
-  A logging `rm` stub asserts that no removal was even *attempted*.
+  A logging `rm` stub asserts that no removal was even _attempted_.
 - **`repo-clean.sh` no longer treats an installed copy as a scratch tree**, and
   reports honest failures instead of claiming success.
 
@@ -101,7 +156,7 @@ exercise the behaviour it claimed to cover.
 
 ### Diagnostics and correctness
 
-- **Systematic exit codes.** `die` call sites pass a `die "$EX_*"` *value*
+- **Systematic exit codes.** `die` call sites pass a `die "$EX_*"` _value_
   where they had passed a bare name, which produced "numeric argument
   required" crashes instead of the intended code.
 - **Absent tools are reported as an incomplete environment**, never as a lint

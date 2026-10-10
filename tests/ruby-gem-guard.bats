@@ -607,3 +607,75 @@ EOF
     run grep -q 'mac-routine.sh' "${SCRIPTS_DIR}/install.sh"
     [ "$status" -eq 0 ]
 }
+
+# ===========================================================================
+# The health entry points must keep CALLING the checks.
+#
+# The bats suite redirects RGH_HOMEBREW_ROOT and RGH_GEM_HOME at a fixture, so
+# it exercises the check FUNCTIONS but proves nothing about whether any real
+# entry point still invokes them. A wrapper that stopped calling rgh_report
+# would leave every test here green while the actual machine went unchecked.
+#
+# scripts/mac-routine.sh is the in-repo entry point. The other one is
+# scripts/verify-setup.sh, which lives in the separate ~/Developer/Tools
+# repository and is outside this tree - so it is named here rather than checked,
+# and the comment says so instead of leaving a silent gap.
+# ===========================================================================
+
+@test "mac-routine.sh runs the full Ruby/gem health report" {
+    run grep -n 'rgh_report' "${SCRIPTS_DIR}/mac-routine.sh"
+    [ "$status" -eq 0 ]
+    # It must be called, not merely mentioned in a comment.
+    run grep -nE '^[[:space:]]+rgh_report[[:space:]]*$' "${SCRIPTS_DIR}/mac-routine.sh"
+    [ "$status" -eq 0 ]
+}
+
+@test "rgh_report calls rgh_check_root_ownership" {
+    run grep -nE '^[[:space:]]+rgh_check_root_ownership' \
+        "${SCRIPTS_DIR}/lib/ruby_gem_health.sh"
+    [ "$status" -eq 0 ]
+    # ...and it is inside rgh_report, not orphaned elsewhere in the file.
+    local report_body
+    report_body="$(awk '/^rgh_report\(\) \{/,/^\}/' "${SCRIPTS_DIR}/lib/ruby_gem_health.sh")"
+    [ -n "$report_body" ]
+    printf '%s\n' "$report_body" | grep -q 'rgh_check_root_ownership'
+}
+
+@test "the health library defines every check rgh_report claims to run" {
+    # rgh_report runs SEVEN checks and verify-setup asserts 7 verdict lines. If
+    # a check is defined but not called, that count silently drops and the
+    # harness reports a short report rather than a missing check.
+    local lib="${SCRIPTS_DIR}/lib/ruby_gem_health.sh"
+    local report_body called called_n defined_n
+    report_body="$(awk '/^rgh_report\(\) \{/,/^\}/' "$lib")"
+    # A CALL, not a mention. The library's convention is `rgh_check_x || rc=1`
+    # on its own line; matching the bare name also matched a commented-out or
+    # otherwise inert `: rgh_check_x`, which is exactly the failure this test
+    # exists to catch, and which an earlier version of it missed.
+    called="$(printf '%s\n' "$report_body" |
+        grep -oE '^[[:space:]]+rgh_check_[a-z_]+[[:space:]]*\|\|' | grep -oE 'rgh_check_[a-z_]+' | sort -u)"
+    [ -n "$called" ]
+    # Counts, not the list against a number: an earlier version compared the
+    # seven-name blob to the string "7" and failed while both sets matched.
+    called_n="$(printf '%s\n' "$called" | grep -c 'rgh_check_')"
+    local c
+    while IFS= read -r c; do
+        [ -n "$c" ] || continue
+        run grep -qE "^${c}\(\) \{" "$lib"
+        [ "$status" -eq 0 ]
+    done <<<"$called"
+    defined_n="$(grep -cE '^rgh_check_[a-z_]+\(\) \{' "$lib")"
+    [ "$called_n" -eq 7 ]
+    [ "$defined_n" -eq "$called_n" ]
+}
+
+@test "the out-of-repo verify-setup.sh entry point is named, not silently dropped" {
+    # The machine-state check this file used to run lives in
+    # ~/Developer/Tools/scripts/verify-setup.sh, which is a SEPARATE repository.
+    # This test documents that rather than pretending it is covered here.
+    local repo_lib="${SCRIPTS_DIR}/lib/ruby_gem_health.sh"
+    [ -r "$repo_lib" ]
+    # The file that must call rgh_report is not in this repository:
+    run bash -c '[ -e "$1/scripts/verify-setup.sh" ]' _ "$PROJECT_ROOT"
+    [ "$status" -ne 0 ]
+}
