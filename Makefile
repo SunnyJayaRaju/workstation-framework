@@ -6,6 +6,7 @@
 	test \
 	test-bash32 \
 	verify-machine \
+	verify-protection \
 	ci-local \
 	lint \
 	format \
@@ -150,6 +151,52 @@ verify-machine: ## Check THIS machine's guard and topgrade config against the re
 	fi
 	@echo
 	@echo "verify-machine: read-only. Nothing was changed."
+
+# Read-only. NOT in CI and NOT in ci-local: it asks GitHub what branch
+# protection actually requires, so it needs `gh`, network access, and a
+# repository where that answer means something.
+#
+# Branch protection lists required status checks as plain strings. Nothing keeps
+# them in step with the job names quality.yml produces, so renaming a runner
+# silently makes every PR unmergeable while CI stays green.
+verify-protection: ## Compare main's required status checks with .github/required-checks.txt (read-only)
+	@file=".github/required-checks.txt"; \
+	repo="SunnyJayaRaju/workstation-framework"; \
+	if [ ! -r "$$file" ]; then echo "MISSING: $$file"; exit 1; fi; \
+	if ! command -v gh >/dev/null 2>&1; then \
+		echo "SKIPPED: gh is not installed, so branch protection cannot be read."; exit 1; \
+	fi; \
+	if ! gh auth status >/dev/null 2>&1; then \
+		echo "SKIPPED: gh is not logged in, so branch protection cannot be read."; exit 1; \
+	fi; \
+	remote="$$(gh api "repos/$$repo/branches/main/protection/required_status_checks" --jq '.contexts[]' 2>/dev/null | sort)"; \
+	if [ -z "$$remote" ]; then \
+		echo "UNREADABLE: could not read the required status checks for main."; \
+		echo "  (no protection rule on main, or no permission to read it)"; \
+		exit 1; \
+	fi; \
+	recorded="$$(grep -v '^[[:space:]]*$$' "$$file" | sed 's/^[[:space:]]*//; s/[[:space:]]*$$//' | sort)"; \
+	echo "=== main's required status checks ==="; printf '%s\n' "$$remote" | sed 's/^/  /'; \
+	echo "=== .github/required-checks.txt ==="; printf '%s\n' "$$recorded" | sed 's/^/  /'; \
+	echo; \
+	if [ "$$remote" = "$$recorded" ]; then \
+		echo "MATCH: branch protection requires exactly what the file records."; \
+	else \
+		echo "DIFFERENT. Lines only in branch protection:"; \
+		printf '%s\n' "$$remote" | while IFS= read -r c; do \
+			[ -n "$$c" ] || continue; \
+			printf '%s\n' "$$recorded" | grep -qxF "$$c" || echo "  - $$c"; \
+		done; \
+		echo "Lines only in .github/required-checks.txt:"; \
+		printf '%s\n' "$$recorded" | while IFS= read -r c; do \
+			[ -n "$$c" ] || continue; \
+			printf '%s\n' "$$remote" | grep -qxF "$$c" || echo "  + $$c"; \
+		done; \
+		echo; \
+		echo "  rename the required checks in branch protection AND update $$file."; \
+		echo "  Until both agree, a green PR is unmergeable."; \
+		exit 1; \
+	fi
 
 format: ## Format shell scripts
 	find scripts templates -type f -name "*.sh" -exec shfmt -w -i 4 -ci {} +

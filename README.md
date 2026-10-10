@@ -8,7 +8,7 @@
 ![ShellCheck](https://img.shields.io/badge/ShellCheck-enabled-4EAA25?logo=shellcheck&logoColor=white)
 ![Bats](https://img.shields.io/badge/Bats-enabled-4EAA25?logo=bats&logoColor=white)
 ![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
-![Version](https://img.shields.io/badge/version-v2.2.1-blue)
+![Version](https://img.shields.io/badge/version-v2.3.0-blue)
 
 ---
 
@@ -137,6 +137,7 @@ Every change is verified using:
 - `make test-bash32` runs the whole suite under `/bin/bash`, which is bash 3.2 on macOS; it skips with a message on systems without `/bin/bash`.
 - The zsh guard lives at `templates/guard.zsh`; `install.sh` does not touch your shell files. To activate it: `cp templates/guard.zsh ~/.config/zsh/guard.zsh`, then `echo 'source ~/.config/zsh/guard.zsh' >> ~/.zshrc`.
 - `make verify-machine` is **not** part of CI: it compares the guard installed at `~/.config/zsh/guard.zsh` against `templates/guard.zsh` and checks that topgrade really has both gem steps disabled, reporting MATCH or DIFFERENT.
+- `make verify-protection` is also local and read-only: it asks GitHub what `main`'s branch protection requires and compares it with `.github/required-checks.txt`, because those two drifting apart makes a green PR unmergeable.
 - It is read-only and repairs nothing; run it when you want to know whether this machine still matches the repository.
 - The first two mirror `.github/workflows/quality.yml`; if CI is red, run them before pushing.
 
@@ -196,7 +197,7 @@ Release
 
 # Current Release
 
-**Version:** **v2.2.1**
+**Version:** **v2.3.0**
 
 ### Highlights
 

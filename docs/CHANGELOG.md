@@ -8,10 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 ## [Unreleased]
 
-Not yet released. VERSION stays at 2.2.1; this section collects work that has
-landed on a branch but has not been cut as a release.
+Not yet released. Nothing has landed since 2.3.0.
+
+---
+
+## [2.3.0] - 2026-10-10
+
+Minor release: new features, no removals.
 
 ### Added
+
+- **`.github/required-checks.txt`, and a test that keeps it honest.** The
+  required status check names in `main`'s branch protection have to match the
+  job names `quality.yml` actually produces. When the runners were renamed from
+  `ubuntu-latest`/`macos-latest` to `ubuntu-24.04`/`macos-15`, branch protection
+  still required the old names and blocked a merge of an entirely green PR.
+  `tests/required-checks.bats` now derives the expected names from the workflow
+  itself and fails with instructions if they drift from the file.
+- **`make verify-protection`.** Local and read-only: asks GitHub what the
+  required checks actually are and compares them with the file. Not in CI and
+  not in `ci-local`, because it needs `gh` and because it asserts remote state.
 
 - **`scripts/lib/ruby_gem_health.sh` and the Ruby/gem guard.**
   On 2026-09-16 a root `gem update --system` wrote a 591-file RubyGems tree into

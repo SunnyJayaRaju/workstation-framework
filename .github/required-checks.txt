@@ -1,0 +1,2 @@
+Shell Quality Checks (ubuntu-24.04)
+Shell Quality Checks (macos-15)
