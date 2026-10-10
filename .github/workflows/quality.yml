@@ -17,6 +17,14 @@ jobs:
     name: Shell Quality Checks
     runs-on: ${{ matrix.os }}
     strategy:
+      # Run BOTH operating systems to completion even when one fails.
+      #
+      # With fail-fast left at its default (true), a failure on ubuntu-latest
+      # cancels the macOS job before it runs, so a defect that only shows up on
+      # one platform stays invisible: PR #22 sat red with every step after
+      # "Run ShellCheck" unexecuted on macOS. Each matrix leg is cheap and
+      # independent, so there is nothing to gain by stopping early.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         include:

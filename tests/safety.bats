@@ -262,7 +262,7 @@ M3
     cat >"$bad" <<'PLANTED'
 #!/usr/bin/env bats
 load test_helper
-@test "planted" {
+@test "planted-command-line" {
     run gem update --system
 }
 PLANTED
@@ -291,7 +291,7 @@ PLANTED2
     local f="${dir}/abspath.bats"
     cat >"$f" <<'ABSPATH'
 #!/usr/bin/env bats
-@test "planted" {
+@test "planted-abspath" {
     run /opt/homebrew/bin/gem update --system
     run /usr/local/bin/brew upgrade
     run sudo /opt/homebrew/bin/gem install foo
@@ -334,7 +334,7 @@ NAMED
     local f="${dir}/payload.bats"
     cat >"$f" <<'PAYLOAD'
 #!/usr/bin/env bats
-@test "planted" {
+@test "planted-payload" {
     eval "sudo gem update --system"
     run bash -c "brew upgrade"
     sh -c 'sudo /opt/homebrew/bin/gem update --system'
@@ -532,7 +532,7 @@ EOF
     local f="${dir}/planted.bats"
     cat >"$f" <<'PLANTED'
 #!/usr/bin/env bats
-@test "planted" {
+@test "planted-negation" {
     echo hi
     ! grep -q x /dev/null
 }
@@ -551,4 +551,97 @@ PLANTED
 }
 CLEAN
     [ -z "$(scan_bare_negations "$clean")" ]
+}
+# ---------------------------------------------------------------------------
+# Duplicate @test names.
+#
+# bats refuses to run a file that declares the same test name twice, but only
+# some versions check it. Local bats is 1.14.0 and ran this file happily with
+# four tests all called "planted"; CI on bats 1.10.0 stopped dead with
+#   Error: Duplicate test name(s) in file ".../tests/safety.bats":
+#          test_planted test_planted test_planted
+# so the same source passed on one machine and failed on the other. This scan
+# counts EVERY @test line in the file - including the ones inside heredocs,
+# which is where all four "planted" names lived - so the class of failure is
+# caught whatever version runs it.
+#
+# safety.bats is NOT excluded from its own scan. It is the file that had the
+# duplicates.
+# ---------------------------------------------------------------------------
+
+# Prints "<file>:<line>: DUPLICATE @test name <n> times: <name>" for each name
+# declared more than once in one file. Sort the output; awk's `for (n in ...)`
+# has no defined order and a test that reported failures in a random order is
+# a test nobody can read.
+scan_duplicate_test_names() {
+    awk '
+        match($0, /^[[:space:]]*@test[[:space:]]/) {
+            rest = substr($0, RSTART + RLENGTH)
+            sub(/^[[:space:]]+/, "", rest)
+            if (match(rest, /^"[^"]*"/)) {
+                name = substr(rest, RSTART + 1, RLENGTH - 2)
+            } else {
+                split(rest, parts, /[[:space:]]+/)
+                name = parts[1]
+            }
+            count[name]++
+            if (!(name in first)) first[name] = FNR
+        }
+        END {
+            for (n in count) {
+                if (count[n] > 1) {
+                    printf "%s:%s: DUPLICATE @test name %d times: %s\n",
+                           FILENAME, first[n], count[n], n
+                }
+            }
+        }
+    ' "$1" | sort
+}
+
+@test "static scan: no two tests in one file share an @test name" {
+    local file hits offenders=""
+    for file in "${PROJECT_ROOT}"/tests/*.bats; do
+        [ -f "$file" ] || continue
+        hits="$(scan_duplicate_test_names "$file")"
+        [ -n "$hits" ] || continue
+        offenders="${offenders}${hits}"$'\n'
+    done
+    offenders="${offenders%$'\n'}"
+    if [ -n "$offenders" ]; then
+        echo "Duplicate @test names. bats 1.10.0 refuses to run a file that declares one twice:" >&2
+        printf '%s\n' "$offenders" | sed 's/^/  /' >&2
+        return 1
+    fi
+}
+
+@test "static scan: the duplicate-name scanner catches a planted duplicate" {
+    # Written with printf, not a heredoc on purpose. bats rewrites `@test`
+    # occurrences textually when it LOADS a .bats file, and that pass reaches
+    # heredoc bodies too, so a fixture written from a heredoc has already had
+    # its `@test` lines rewritten by the time a scan could read it. printf
+    # builds the text at run time, after that pass.
+    local dir="${BATS_TEST_TMPDIR}/dupnames"
+    mkdir -p "$dir"
+    local f="${dir}/dup.bats"
+    printf '@test "same name" {\n    true\n}\n@test "same name" {\n    true\n}\n' >"$f"
+    local out
+    out="$(scan_duplicate_test_names "$f")"
+    [[ "$out" == *"DUPLICATE @test name 2 times: same name"* ]]
+
+    # Three is the case CI actually hit.
+    printf '@test "a" {\n    true\n}\n@test "b" {\n    true\n}\n@test "a" {\n    true\n}\n@test "b" {\n    true\n}\n' >"$f"
+    out="$(scan_duplicate_test_names "$f")"
+    [[ "$out" == *"DUPLICATE @test name 2 times: a"* ]]
+    [[ "$out" == *"DUPLICATE @test name 2 times: b"* ]]
+
+    # A clean file reports nothing, so the check above is not just always-on.
+    local clean="${dir}/clean.bats"
+    printf '@test "one" {\n    true\n}\n@test "two" {\n    true\n}\n' >"$clean"
+    [ -z "$(scan_duplicate_test_names "$clean")" ]
+
+    # And the scan really is reading the file: a name that appears once is not
+    # reported even though it sits among the others.
+    printf '@test "solo" {\n    true\n}\n@test "solo" {\n    true\n}\n@test "unique" {\n    true\n}\n' >"$f"
+    out="$(scan_duplicate_test_names "$f")"
+    [[ "$out" != *"unique"* ]]
 }
