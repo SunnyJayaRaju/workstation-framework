@@ -36,6 +36,7 @@ readonly UTILITIES=(
     check-project.sh
     repo-clean.sh
     doctor.sh
+    mac-routine.sh
     restore.sh
     shell-quality.sh
     sync.sh

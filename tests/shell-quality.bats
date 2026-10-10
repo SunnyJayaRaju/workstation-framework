@@ -27,12 +27,25 @@ load test_helper
 
 @test "shell-quality.sh passes every framework utility" {
     local utility
-    for utility in backup check-project repo-clean doctor install \
+    for utility in backup check-project repo-clean doctor install mac-routine \
         restore shell-quality sync uninstall update; do
         run bash "${SCRIPTS_DIR}/shell-quality.sh" "${SCRIPTS_DIR}/${utility}.sh"
         [ "$status" -eq 0 ]
         [[ "$output" != *"SC1091"* ]]
     done
+}
+
+@test "the utility list here matches the one install.sh installs" {
+    # This list is hard-coded, so it silently goes stale: a new utility ships
+    # unlinted by this test the moment it is added. install.sh is the authority.
+    run bash "${SCRIPTS_DIR}/check-project.sh"
+
+    [ "$status" -eq 0 ]
+    run grep -oE '^    [a-z-]+\.sh$' "${SCRIPTS_DIR}/install.sh"
+    local installed
+    installed="$(printf '%s\n' "$output" | sort -u)"
+    [[ "$installed" == *"mac-routine.sh"* ]]
+    [[ "$installed" == *"backup.sh"* ]]
 }
 # --- FIX 1: a missing tool is an environment problem, not a lint finding --
 

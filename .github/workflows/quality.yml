@@ -15,16 +15,40 @@ permissions:
 jobs:
   quality:
     name: Shell Quality Checks
+    # Runners are pinned, not floating.
+    #
+    # `ubuntu-latest` migrates to Ubuntu 26 on 2026-10-19 and `macos-latest`
+    # moves with Apple's images. Both would silently change what the tools are,
+    # and the exact apt versions below are the reason that matters:
+    #
+    #   shellcheck=0.9.0-1  shfmt=3.8.0-1  bats=1.10.0-1
+    #
+    # Those pins exist because unpinned installs let this runner drift from
+    # developer machines, which is what caused two red pushes on 2026-10-01
+    # (shfmt 3.8.0 here vs 3.14.1 on macOS). The pins only hold on the
+    # distribution they were taken from: a newer Ubuntu ships newer package
+    # versions, those exact versions stop being installable, and the install
+    # step fails before any check runs. Pinning the image is what keeps the
+    # pins meaningful.
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
+      # Run BOTH operating systems to completion even when one fails.
+      #
+      # With fail-fast left at its default (true), a failure on ubuntu-24.04
+      # cancels the macOS job before it runs, so a defect that only shows up on
+      # one platform stays invisible: PR #22 sat red with every step after
+      # "Run ShellCheck" unexecuted on macOS. Each matrix leg is cheap and
+      # independent, so there is nothing to gain by stopping early.
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-15]
         include:
-          - os: macos-latest
+          - os: macos-15
             shellcheck: shellcheck
             shfmt: shfmt
             bats: bats-core
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             shellcheck: shellcheck
             shfmt: shfmt
             bats: bats
@@ -44,7 +68,8 @@ jobs:
           sudo apt-get install -y \
             shellcheck=0.9.0-1 \
             shfmt=3.8.0-1 \
-            bats=1.10.0-1
+            bats=1.10.0-1 \
+            zsh=5.9-6ubuntu2
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -80,6 +105,51 @@ jobs:
       - name: Verify shell formatting
         run: |
           find scripts templates -type f -name "*.sh" -exec shfmt -d -i 4 -ci {} +
+
+      # templates/guard.zsh is zsh, not bash: `bash -n` and shellcheck both
+      # skip it, so without this its syntax was never checked anywhere.
+      - name: Verify zsh syntax
+        run: |
+          if command -v zsh >/dev/null 2>&1; then
+            zsh --version
+            zsh -n templates/guard.zsh
+            echo "zsh -n templates/guard.zsh: OK"
+          else
+            echo "zsh is not installed: templates/guard.zsh cannot be syntax-checked" >&2
+            exit 1
+          fi
+
+      # tests/guard.bats sources the guard into a real zsh. If zsh is missing
+      # the test SKIPS, and a silent skip looks exactly like a pass. Print the
+      # version here so a skipped guard test is always visible in the log.
+      - name: Report zsh availability
+        run: |
+          if command -v zsh >/dev/null 2>&1; then
+            zsh --version
+            echo "guard tests will RUN"
+          else
+            echo "zsh NOT on PATH: tests/guard.bats will SKIP" >&2
+            echo "  $(grep -c 'zsh is not installed on this runner' tests/guard.bats) skip message(s) in tests/guard.bats" >&2
+          fi
+
+      # The suite has to pass under the bash that ships as /bin/bash on macOS,
+      # which is 3.2 and far older than anything a Linux runner has. Local
+      # shells are usually Homebrew's bash 5, so this is easy to miss until CI.
+      - name: Report the bash version bats runs under
+        if: runner.os == 'macOS'
+        run: |
+          echo "bash on PATH : $(bash --version | head -1)"
+          echo "/bin/bash    : $(/bin/bash --version | head -1)"
+          # bats re-execs through `#!/usr/bin/env bash`, so PATH decides which
+          # interpreter runs the tests. This is the PATH `make test-bash32`
+          # uses; the next step is what actually proves the suite passes.
+          mkdir -p "$RUNNER_TEMP/bash32"
+          ln -sf /bin/bash "$RUNNER_TEMP/bash32/bash"
+          echo "bash with that PATH first: $(PATH="$RUNNER_TEMP/bash32:$PATH" bash --version | head -1)"
+
+      - name: Run the suite under bash 3.2
+        if: runner.os == 'macOS'
+        run: make test-bash32
 
       - name: Run Bats tests
         run: |

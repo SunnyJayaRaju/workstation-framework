@@ -11,7 +11,11 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: macos-latest
+    # Pinned, not floating: `macos-latest` moves with Apple's images, so a
+    # release cut would silently start running on a different OS than the one
+    # it was verified against. See quality.yml for the longer reasoning.
+    runs-on: macos-15
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository

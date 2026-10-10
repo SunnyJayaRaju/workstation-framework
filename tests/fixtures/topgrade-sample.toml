@@ -1,0 +1,6 @@
+# Fixture for the topgrade config check. Byte-for-byte the shape of a real
+# ~/.config/topgrade.toml: the two gem steps that would otherwise reach for
+# `sudo gem update --system` are disabled here.
+
+[misc]
+disable = ["gem", "ruby_gems"]
