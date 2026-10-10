@@ -98,6 +98,13 @@ rgh_site_ruby_files() {
 # from sitelibdir. On this machine:
 #   rubylibdir = /opt/homebrew/Cellar/ruby/4.0.7_1/lib/ruby/4.0.0
 #   sitelibdir = /opt/homebrew/lib/ruby/site_ruby/4.0.0
+# rgh_shipped_gem_version always asks the ruby ON PATH. It takes the name as an
+# argument rather than hardcoding it, and the one call site passes `ruby`
+# explicitly. ShellCheck 0.9.0 (the Ubuntu runner) raised SC2120 here - the
+# function reads $1 and no caller supplied it - and SC2119 at the call site for
+# the mirror image of the same problem. 0.11.0 on macOS reports neither, so the
+# mismatch was invisible locally; passing the argument satisfies both checks in
+# every version rather than suppressing either one.
 rgh_shipped_gem_version() {
     local ruby_bin="${1:-ruby}" path
     command -v "$ruby_bin" >/dev/null 2>&1 || return 0
@@ -264,7 +271,7 @@ rgh_check_root_ownership() {
 rgh_check_gem_version_parity() {
     local active shipped
     active=$(rgh_active_gem_version)
-    shipped=$(rgh_shipped_gem_version)
+    shipped=$(rgh_shipped_gem_version ruby)
 
     if [ -z "$active" ] || [ -z "$shipped" ]; then
         rgh_say "FAIL  could not read both gem versions (gem='${active:-none}' rubygems.rb='${shipped:-none}') - the parity check measured nothing"

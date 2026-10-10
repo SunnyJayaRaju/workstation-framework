@@ -123,37 +123,79 @@ check() { bash -c 'source "$1"; "$2"' _ "$RGH_LIB" "$1"; }
 # matching check turns FAIL, with the fix command in the output.
 # ===========================================================================
 
-@test "a real root-owned tree FAILs the ownership check, with the fix printed" {
-    # /etc/ssh is root-owned on this machine (7 entries, measured). Using it
-    # proves the check FAILs on genuine root ownership: no fake owner, no sudo,
-    # no chown, and /opt/homebrew is not involved.
-    RGH_HOMEBREW_ROOT=/etc/ssh run check rgh_check_root_ownership
+# Builds a directory tree owned by the CURRENT user and points RGH_ROOT_USER at
+# that same user, which is how this file already fakes root ownership (see the
+# RGH_ROOT_USER uses in the routine tests below). No test can chown to real root,
+# and no test needs a system directory to already be root-owned.
+#
+# This replaces /etc/ssh, which the earlier version of these four tests used. It
+# is root-owned on the development Mac - exactly 7 entries, measured, and the
+# count was hardcoded in the assertion - but it does not exist on the Ubuntu CI
+# runner, where `find` counted 0 and the tests failed for a reason that had
+# nothing to do with the check they were meant to cover.
+make_owned_tree() {
+    local root="$1"
+    mkdir -p "${root}/a/b/c"
+    : >"${root}/top"
+    : >"${root}/a/one"
+    : >"${root}/a/b/two"
+    : >"${root}/a/b/c/three"
+    # 8 entries: the root itself, a, a/b, a/b/c, and the four files.
+    export RGH_ROOT_USER="$(id -un)"
+}
+
+@test "a tree owned by the stand-in root FAILs the ownership check, with the fix printed" {
+    local tree="${BATS_TEST_TMPDIR}/owned-tree"
+    make_owned_tree "$tree"
+    RGH_HOMEBREW_ROOT="$tree" run check rgh_check_root_ownership
     [ "$status" -eq 1 ]
     [[ "$output" == *"FAIL  root-owned entries"* ]]
-    [[ "$output" == *"7"* ]]
+    # The count is measured by this test from the tree it just built, not
+    # copied from another machine.
+    local expected
+    expected="$(find "$tree" -user "$(id -un)" | wc -l | tr -d ' ')"
+    [ "$expected" -ge 8 ]
+    [[ "$output" == *"$expected"* ]]
     # The fix is printed, never run, and carries the password caveat.
-    [[ "$output" == *"sudo find /etc/ssh -user root -exec chown"* ]]
+    [[ "$output" == *"sudo find $tree -user root -exec chown"* ]]
     [[ "$output" == *"needs your password"* ]]
 }
 
 @test "the real Homebrew and the real ~/.gem are clean, and both count 0" {
-    # The same check, no redirection: the machine this was written for.
+    # This one deliberately reads the REAL directories: its whole value is
+    # "this machine is undamaged right now". There is nothing to assert on a
+    # runner with no Homebrew, where both paths are absent and the function
+    # returns 0 without looking at anything - a vacuous pass.
+    [ -d /opt/homebrew ] || skip "no /opt/homebrew here; this asserts THIS Mac's real tree"
     run bash -c 'source "$1"; rgh_root_owned_count "$2"; rgh_root_owned_count "$3"' \
         _ "$RGH_LIB" /opt/homebrew "$HOME/.gem"
     [ "$output" = "00" ]
 }
 
 @test "the gem home is checked too, not only Homebrew" {
-    run bash -c 'source "$1"; RGH_GEM_HOME=/etc/ssh rgh_check_root_ownership' _ "$RGH_LIB"
+    local tree="${BATS_TEST_TMPDIR}/gem-owned-tree"
+    make_owned_tree "$tree"
+    # Homebrew root deliberately left empty, so the failure can only come from
+    # the gem home. That is the property under test.
+    run bash -c 'source "$1"; RGH_ROOT_USER="$2"; RGH_HOMEBREW_ROOT="$3"; RGH_GEM_HOME="$4" rgh_check_root_ownership' \
+        _ "$RGH_LIB" "$(id -un)" "${BATS_TEST_TMPDIR}/empty-root" "$tree"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"/etc/ssh"* ]]
+    [[ "$output" == *"$tree"* ]]
 }
 
 @test "the counter is recursive, not top-level only" {
     # The 2026-09-16 damage was 591 files deep under lib/ruby/site_ruby, so a
     # counter that only looked at the top of the tree would have read 0.
-    run bash -c 'source "$1"; rgh_root_owned_count "$2"' _ "$RGH_LIB" /etc/ssh
-    [ "$output" -ge 5 ]
+    local tree="${BATS_TEST_TMPDIR}/deep-tree"
+    make_owned_tree "$tree"
+    run bash -c 'source "$1"; RGH_ROOT_USER="$2"; rgh_root_owned_count "$3"' \
+        _ "$RGH_LIB" "$(id -un)" "$tree"
+    local counted top_only
+    counted="$output"
+    # Exactly the top-level entry is what a non-recursive counter would report.
+    top_only="$(find "$tree" -maxdepth 0 -user "$(id -un)" | wc -l | tr -d ' ')"
+    [ "$top_only" -eq 1 ]
+    [ "$counted" -gt "$top_only" ]
 }
 
 @test "a site_ruby override file FAILs, and the printed fix moves rather than deletes" {

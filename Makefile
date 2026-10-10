@@ -25,6 +25,9 @@ help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' Makefile | \
 	awk 'BEGIN {FS=":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
 	@echo ""
+	@echo "lint uses the same flags as CI (.github/workflows/quality.yml):"
+	@echo "  shellcheck -x, so local and CI cannot disagree again."
+	@echo ""
 
 test: ## Run all Bats tests
 	bats tests
@@ -33,7 +36,7 @@ syntax: ## Check Bash syntax of every script
 	find scripts templates -type f -name "*.sh" -exec bash -n {} +
 
 lint: ## Run ShellCheck
-	find scripts templates -type f -name "*.sh" -exec shellcheck {} +
+	find scripts templates -type f -name "*.sh" -exec shellcheck -x {} +
 
 format: ## Format shell scripts
 	find scripts templates -type f -name "*.sh" -exec shfmt -w -i 4 -ci {} +
