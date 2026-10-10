@@ -29,7 +29,7 @@ setup() {
 
     SHIMDIR="${BATS_TEST_TMPDIR}/shim"
     mkdir -p "$SHIMDIR"
-    for c in sudo gem; do
+    for c in sudo gem; do # safety: shim names, not a command
         cat >"${SHIMDIR}/$c" <<'SH'
 #!/bin/sh
 echo "REACHED-REAL-$(basename "$0"): $*"
@@ -215,8 +215,15 @@ sudo_refused() {
     [[ "$output" == *"REFUSING TO RUN"* ]]
     [[ "$output" == *"not a shim"* ]]
     [[ "$output" != *"REACHED-REAL"* ]]
-    # It must name the real binary it would otherwise have run.
-    [[ "$output" == *"/opt/homebrew/bin/gem"* ]]
+    # It must name the binary it would otherwise have run. That path is NOT
+    # hardcoded: it is whatever gem resolves to in this run, which is the
+    # suite-wide fake now that test_helper fences the PATH. Hardcoding the real
+    # /opt/homebrew/bin/gem is what this test used to assert, and the fence
+    # correctly made that assertion fail.
+    local resolved
+    resolved="$(command -v gem)"
+    [[ "$output" == *"$resolved"* ]]
+    [[ "$resolved" != "${BATS_TEST_TMPDIR}/nowhere"* ]]
 }
 
 @test "the shims really are what the runners resolve" {
@@ -318,18 +325,46 @@ sudo_refused() {
 # The real topgrade, to keep the documented claim honest rather than assumed.
 # ---------------------------------------------------------------------------
 
-to() {
-    perl -e 'alarm shift; exec @ARGV' "$@"
+# REPLACED, deliberately: the previous version of this test executed the real
+# topgrade binary with `--run-type dry`.
+#
+# `--run-type dry` is documented to print commands instead of running them, and
+# it was measured to leave /opt/homebrew untouched. It was still the wrong
+# thing for a test to do. On 2026-10-10 this very suite installed 591 files into
+# /opt/homebrew by evaluating a command string in the wrong shell, and the
+# lesson was not "be careful which flags you pass to a real binary", it was
+# "a test must not start a real binary that can reach the machine". topgrade is
+# a program whose entire purpose is running gem, brew and sudo. Even in dry
+# mode, whether it is safe is a property of topgrade's current build, not of
+# this repository, and it changes on every upgrade.
+#
+# The claim itself does not need topgrade to be true, so it is asserted from a
+# capture instead. The fixture records a real run of
+# `topgrade --config <empty> --run-type dry` and is provenance-documented in the
+# file. Nothing is executed and nothing can drift into executing.
+@test "the captured topgrade dry run shows it would call sudo gem update --system" {
+    local fixture="${PROJECT_ROOT}/tests/fixtures/topgrade-dry-ruby_gems.txt"
+    [ -r "$fixture" ] || {
+        echo "missing fixture: $fixture" >&2
+        return 1
+    }
+    local content
+    content="$(cat "$fixture")"
+    # The claim the config guard exists for: with nothing disabled, topgrade
+    # reaches for sudo to update RubyGems system-wide.
+    [[ "$content" == *"sudo"* ]]
+    [[ "$content" == *"gem update --system"* ]]
+    [[ "$content" == *"Dry running:"* ]]
 }
 
-@test "topgrade really does call sudo gem update --system" {
-    command -v topgrade >/dev/null 2>&1 || skip "topgrade not installed"
-    local cfg="${BATS_TEST_TMPDIR}/empty.toml"
-    printf '[misc]\n' >"$cfg"
-    # --run-type dry executes no step, so nothing is written and sudo is unused.
-    local out
-    out="$(to 120 topgrade --config "$cfg" --run-type dry 2>&1 || true)"
-    [[ "$out" == *"gem update --system"* ]]
+@test "the fixture records the dry run, not an execution" {
+    local fixture="${PROJECT_ROOT}/tests/fixtures/topgrade-dry-ruby_gems.txt"
+    # Every command line in the capture is prefixed "Dry running:". If a real
+    # execution were ever pasted in, that prefix would be gone.
+    local commands
+    commands="$(grep -c '^Dry running: ' "$fixture")"
+    [ "$commands" -ge 2 ]
+    ! grep -qE '^Done|^Updated|^Installing' "$fixture"
 }
 
 @test "the real topgrade config disables both gem steps" {

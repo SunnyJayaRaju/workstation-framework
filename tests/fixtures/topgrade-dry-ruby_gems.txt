@@ -1,0 +1,19 @@
+Captured 2026-10-10 on this machine, from the test author's own shell, by:
+
+    printf '[misc]\n' > /var/folders/.../opencode/control.toml
+    topgrade --config /var/folders/.../opencode/control.toml --run-type dry
+
+topgrade 17.12.3. `--run-type dry` executes no step: topgrade prints each
+command instead of running it, which is what the "Dry running:" prefix on the
+second line records. The config is intentionally EMPTY - no `disable` list -
+because the whole point of this capture is what topgrade does with nothing
+configured.
+
+Transcribed verbatim from that run. Nothing here was produced by running the
+suite, and the suite never runs topgrade: see tests/safety.bats for why.
+
+―― 00:17:24 - RubyGems ――
+Dry running: /opt/homebrew/bin/gem update --user-install
+―― 00:17:24 - RubyGems ――
+Dry running: /usr/bin/sudo -E -H /opt/homebrew/bin/gem update --system
+rubygems: OK
