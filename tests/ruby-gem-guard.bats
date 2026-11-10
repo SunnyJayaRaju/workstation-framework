@@ -598,8 +598,12 @@ EOF
     [ "$status" -eq 2 ]
     [ ! -s "${RT}/calls" ]
     # A stray argument after a valid option must not be silently ignored
-    # either: the option parser takes exactly one argument, or exit 2.
+    # either -- including after --help, which used to print help and exit 0
+    # before the argument-count guard could fire: the option parser takes
+    # exactly one argument, or exit 2.
     run bash "${SCRIPTS_DIR}/mac-routine.sh" --dry-run whatever
+    [ "$status" -eq 2 ]
+    run bash "${SCRIPTS_DIR}/mac-routine.sh" --help extra
     [ "$status" -eq 2 ]
     [ ! -s "${RT}/calls" ]
 }

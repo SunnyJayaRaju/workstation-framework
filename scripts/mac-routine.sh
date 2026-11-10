@@ -78,6 +78,13 @@ DRY_RUN=0
 # name cannot seed drift_check with garbage: measure() seeds them from the
 # baseline on first use regardless.
 PREV_HB='' PREV_GEM='' PREV_GEMV=''
+# The parser takes exactly one argument. The guard sits before the case so
+# even a valid option followed by a stray argument is rejected instead of
+# being silently executed on the leading option.
+[ "$#" -le 1 ] || {
+    printf 'Unexpected argument: %s\nTry %s --help\n' "$2" "$PROGRAM_NAME" >&2
+    exit 2
+}
 case "${1:-}" in
     --dry-run) DRY_RUN=1 ;;
     -h | --help)
@@ -90,10 +97,6 @@ case "${1:-}" in
         exit 2
         ;;
 esac
-[ "$#" -le 1 ] || {
-    printf 'Unexpected argument: %s\nTry %s --help\n' "$2" "$PROGRAM_NAME" >&2
-    exit 2
-}
 
 # ---- measurement ----------------------------------------------------------
 #
@@ -127,7 +130,7 @@ accept() {
 # are reported separately because they have different causes: a new root-owned
 # file is a privilege problem, a changed gem -v is a RubyGems override problem.
 drift_check() {
-    local where="$1" drifted=0 p
+    local where="$1" drifted=0 p parity
 
     if [ "$ROOT_HB" != "$PREV_HB" ] || [ "$ROOT_GEM" != "$PREV_GEM" ]; then
         drifted=1
