@@ -416,13 +416,26 @@ mac-routine.sh --dry-run # measure only
 
 It runs **topgrade → mo clean → brew doctor → brew cleanup** and, between
 every step, records two numbers: how many files under `/opt/homebrew` and
-`~/.gem` are owned by root, and what `gem -v` reports. If either changes it
-**stops**, prints the step responsible, the new files, and the fix command.
-Nothing after that step runs.
+`~/.gem` are owned by root, and what `gem -v` reports. If root ownership
+changes, or `gem -v` changes to a version the active Ruby does **not** ship
+(a `site_ruby` override), it **stops**: it prints the step responsible, the
+new files, and the fix command, and nothing after that step runs. If `gem -v`
+changes while still matching what the active Ruby ships — a legitimate
+`brew upgrade ruby` keg move — it reports the change and **continues**; the
+final health report decides whether the new keg left anything dangling.
+
+At the end it runs the full health report and exits with its code: `0`
+everything clean, `1` the report printed a FAIL (damage existed or appeared),
+`2` usage error, `3` the routine stopped mid-way. Damage present **before**
+the run is therefore reported, not waved through.
 
 It never calls `sudo`. It passes topgrade `--no-ask-retry` so the
 "Retry? (y)es/(N)o/(s)hell/(q)uit" prompt cannot hang it, and adds
-`--disable containers` when no container runtime is answering.
+`--disable containers` when no container runtime is answering. The macOS
+system-update step is disabled (`--disable system`): a recorded run had it
+auto-consent through `--yes` to downloading a full macOS upgrade and prompt
+for a password mid-routine. An OS upgrade is a deliberate decision, not part
+of this routine.
 
 ### Bypassing the guard
 

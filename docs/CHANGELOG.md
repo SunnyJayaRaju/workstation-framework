@@ -8,7 +8,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 ## [Unreleased]
 
-Not yet released. Nothing has landed since 2.3.0.
+Not yet released. Nothing has landed since 2.4.0.
+
+---
+
+## [2.4.0] - 2026-11-11
+
+Minor release: new features and one long-standing exit-code fix, no removals.
+
+### Added
+
+- **macOS system updates stay out of the routine.** `mac-routine.sh` now
+  passes topgrade `--disable system`. A recorded run had the macOS
+  system-update step auto-consent through `--yes` to downloading a full
+  macOS upgrade and prompt for a password mid-routine; an OS upgrade is a
+  deliberate decision, not part of weekly maintenance. The flag set was
+  read out of `topgrade --help` (17.16.0) and is pinned by a new test that
+  fails if a step id the wrapper disables ever stops being listed there.
+
+### Fixed
+
+- **`mac-routine.sh` now reports damage instead of waving it through.** The
+  final Ruby/gem health report decided the exit code in the docs but not in
+  the code: its result was discarded and the "no ownership or version
+  drift" banner printed unconditionally, so damage present **before** the
+  run produced a false all-clear and exit 0. The exit code is now the
+  report's verdict — `0` clean, `1` FAIL found, `2` usage error, `3`
+  stopped mid-way — and the success banner prints only when the report is
+  clean, exactly as the script's own comments always claimed.
+- **A legitimate Ruby keg upgrade no longer stops the routine.** Any
+  `gem -v` change mid-routine used to abort with the site_ruby-override
+  scolding. The drift check now re-measures parity of the new state: if the
+  active version still matches what the active Ruby ships — a `brew upgrade
+ruby` keg move — the routine reports the change and continues; a
+  parity-breaking change stops exactly as before.
+- **Small hardening.** The option parser rejects a stray argument after a
+  valid option (exit 2) instead of silently ignoring it; `--help` documents
+  all four exit codes; and ambient exported `PREV_*` variables can no
+  longer seed the drift check with garbage.
 
 ---
 
