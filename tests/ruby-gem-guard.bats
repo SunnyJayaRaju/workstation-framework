@@ -597,6 +597,81 @@ EOF
     run bash "${SCRIPTS_DIR}/mac-routine.sh" --wat
     [ "$status" -eq 2 ]
     [ ! -s "${RT}/calls" ]
+    # A stray argument after a valid option must not be silently ignored
+    # either -- including after --help, which used to print help and exit 0
+    # before the argument-count guard could fire: the option parser takes
+    # exactly one argument, or exit 2.
+    run bash "${SCRIPTS_DIR}/mac-routine.sh" --dry-run whatever
+    [ "$status" -eq 2 ]
+    run bash "${SCRIPTS_DIR}/mac-routine.sh" --help extra
+    [ "$status" -eq 2 ]
+    [ ! -s "${RT}/calls" ]
+}
+
+@test "mac-routine continues when a Ruby keg upgrade keeps gem parity" {
+    setup_routine
+    # A legitimate `brew upgrade ruby` inside topgrade moves BOTH versions:
+    # the new keg ships a new RubyGems and `gem -v` follows it, so parity of
+    # the NEW state holds. The shipped rubygems.rb is rewritten exactly as
+    # the new keg would, from the topgrade shim; the routine must report and
+    # continue, not abort with the site_ruby-override scolding.
+    export FIX # not exported by setup(); the shim expands it at run time
+    cat >"${RT}/bin/topgrade" <<EOF
+#!/bin/sh
+echo "topgrade \$*" >> "${CALLS}"
+printf '  VERSION = "4.0.24"\n' > "\${FIX}/rubylibdir/rubygems.rb"
+exit 0
+EOF
+    chmod +x "${RT}/bin/topgrade"
+
+    run bash "${SCRIPTS_DIR}/mac-routine.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"NOTE after step: topgrade"* ]]
+    [[ "$output" == *"a Ruby keg upgrade, not an override"* ]]
+    [[ "$output" == *"PASS  gem 4.0.24 matches"* ]]
+    [[ "$output" != *"STOPPED after step"* ]]
+}
+
+@test "mac-routine reports and exits 1 when damage predates the run" {
+    setup_routine
+    # Damage present at BASELINE never "changes" during the run, so drift
+    # never fires and every step still runs - but the final health report
+    # must mark the failure and set the exit code, not print an all-clear.
+    export RGH_ROOT_USER="$(id -un)" # stand in for root; no test can chown to root
+    printf 'tampered\n' >"${RGH_HOMEBREW_ROOT}/lib/ruby/gems/planted"
+
+    run bash "${SCRIPTS_DIR}/mac-routine.sh"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"FAIL  root-owned entries"* ]]
+    [[ "$output" == *"FAIL lines above"* ]]
+    [[ "$output" != *"finished; no ownership or version drift at any step"* ]]
+    # No step changed anything, so nothing aborted: all four steps ran.
+    run grep -q '^topgrade' "${RT}/calls"
+    [ "$status" -eq 0 ]
+    run grep -q '^mo ' "${RT}/calls"
+    [ "$status" -eq 0 ]
+    run grep -q '^brew cleanup' "${RT}/calls"
+    [ "$status" -eq 0 ]
+}
+
+@test "every topgrade step id mac-routine.sh disables exists in the installed topgrade" {
+    # The disable set is pinned in two places: the wrapper's topgrade array
+    # and topgrade's own list of step ids. A topgrade upgrade that renames
+    # one would make the wrapper pass --disable for an id that no longer
+    # exists - silently re-enabling, for example, the macOS system update.
+    if ! command -v topgrade >/dev/null 2>&1; then
+        skip "topgrade is not installed on this runner; the flag set cannot be pinned here"
+    fi
+    local help id
+    help="$(topgrade --help 2>&1)"
+    for id in gem ruby_gems microsoft_office system; do
+        run grep -qE "(^|[[:space:],])${id}([[:space:],]|$)" <<<"$help"
+        if [ "$status" -ne 0 ]; then
+            echo "topgrade --help no longer lists step id '$id' for --disable" >&2
+            echo "a topgrade upgrade may have renamed it: update mac-routine.sh and this test together" >&2
+            return 1
+        fi
+    done
 }
 
 # ===========================================================================

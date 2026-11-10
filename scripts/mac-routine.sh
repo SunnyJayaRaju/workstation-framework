@@ -22,9 +22,15 @@
 # NEVER
 #   - calls sudo. The fix commands it prints are for the user to run.
 #   - hangs on a prompt. topgrade runs --no-ask-retry, and the Containers step
-#     is disabled when no container runtime is running. Both flags were read
-#     out of `topgrade --help` on 2026-10-10 (topgrade 17.12.3), not guessed.
+#     is disabled when no container runtime is running. The flag set was read
+#     out of `topgrade --help` on 2026-10-10 (topgrade 17.12.3), re-verified
+#     against 17.16.0 on 2026-11-11, and pinned by a test.
 #   - deletes anything.
+#   - upgrades the OS. `--disable system` keeps the macOS system-update step
+#     out of a maintenance run: a recorded run had that step auto-consent
+#     through --yes to downloading a full macOS upgrade and prompt for a
+#     password mid-routine. An OS upgrade is a deliberate decision, not part
+#     of this routine.
 #
 # Usage: mac-routine [--dry-run] [--help]
 ###############################################################################
@@ -58,10 +64,27 @@ Environment:
   RGH_HOMEBREW_ROOT   Override the Homebrew root (default /opt/homebrew)
   RGH_GEM_HOME        Override the user gem home (default ~/.gem)
   RGH_LIB             Override the path to lib/ruby_gem_health.sh
+
+Exit codes:
+  0   every step ran and the final health report has no FAIL line (a WARN is still 0)
+  1   the final health report found damage - see its FAIL lines
+  2   usage error, or the health library is unreadable
+  3   a step changed ownership or broke gem parity; the routine aborted there
 EOF
 }
 
 DRY_RUN=0
+# PREV_* are forced empty here so an ambient exported variable of the same
+# name cannot seed drift_check with garbage: measure() seeds them from the
+# baseline on first use regardless.
+PREV_HB='' PREV_GEM='' PREV_GEMV=''
+# The parser takes exactly one argument. The guard sits before the case so
+# even a valid option followed by a stray argument is rejected instead of
+# being silently executed on the leading option.
+[ "$#" -le 1 ] || {
+    printf 'Unexpected argument: %s\nTry %s --help\n' "$2" "$PROGRAM_NAME" >&2
+    exit 2
+}
 case "${1:-}" in
     --dry-run) DRY_RUN=1 ;;
     -h | --help)
@@ -107,7 +130,7 @@ accept() {
 # are reported separately because they have different causes: a new root-owned
 # file is a privilege problem, a changed gem -v is a RubyGems override problem.
 drift_check() {
-    local where="$1" drifted=0 p
+    local where="$1" drifted=0 p parity
 
     if [ "$ROOT_HB" != "$PREV_HB" ] || [ "$ROOT_GEM" != "$PREV_GEM" ]; then
         drifted=1
@@ -124,16 +147,30 @@ drift_check() {
     fi
 
     if [ "$GEMV" != "$PREV_GEMV" ]; then
-        drifted=1
-        printf '\nSTOPPED after step: %s\n' "$where"
-        printf '  gem -v changed: %s -> %s\n' "$PREV_GEMV" "$GEMV"
-        printf '  a site_ruby override was installed or removed\n'
-        printf '  fix (moves, never deletes):\n'
-        # shellcheck disable=SC2016  # $(date) is printed for the user to run
-        printf '    TS=$(date +%%Y%%m%%d-%%H%%M%%S); mkdir -p ~/Developer/Backups/site_ruby-stale-$TS\n'
-        # shellcheck disable=SC2016  # $TS is set by the line above
-        printf '    mv %s/lib/ruby/site_ruby/* ~/Developer/Backups/site_ruby-stale-$TS/\n' \
-            "$RGH_HOMEBREW_ROOT"
+        # A changed gem -v has two causes with different verdicts. A Ruby keg
+        # upgrade moves BOTH the active and the shipped version - parity
+        # holds. A site_ruby override moves only the active one - parity
+        # breaks, and that is the 2026-09-16 damage. Parity of the new state
+        # decides, so a legitimate upgrade does not abort the routine.
+        if parity="$(rgh_check_gem_version_parity)"; then
+            printf '\nNOTE after step: %s\n' "$where"
+            printf '  gem -v changed: %s -> %s\n' "$PREV_GEMV" "$GEMV"
+            printf '%s\n' "$parity"
+            printf '  the active version matches what the active Ruby ships:\n'
+            printf '  a Ruby keg upgrade, not an override. Continuing; the final\n'
+            printf '  health report decides whether the new keg left anything dangling.\n'
+        else
+            drifted=1
+            printf '\nSTOPPED after step: %s\n' "$where"
+            printf '  gem -v changed: %s -> %s\n' "$PREV_GEMV" "$GEMV"
+            printf '  a site_ruby override was installed or removed\n'
+            printf '  fix (moves, never deletes):\n'
+            # shellcheck disable=SC2016  # $(date) is printed for the user to run
+            printf '    TS=$(date +%%Y%%m%%d-%%H%%M%%S); mkdir -p ~/Developer/Backups/site_ruby-stale-$TS\n'
+            # shellcheck disable=SC2016  # $TS is set by the line above
+            printf '    mv %s/lib/ruby/site_ruby/* ~/Developer/Backups/site_ruby-stale-$TS/\n' \
+                "$RGH_HOMEBREW_ROOT"
+        fi
     fi
 
     [ "$drifted" = "0" ] && return 0
@@ -176,9 +213,13 @@ main() {
     # 1. topgrade. --no-ask-retry removes the interactive
     # "Retry? (y)es/(N)o/(s)hell/(q)uit" prompt. gem and ruby_gems are disabled
     # on purpose: ruby_gems runs `sudo gem update --system`, which is the exact
-    # command that caused the 2026-09-16 damage.
+    # command that caused the 2026-09-16 damage. system is disabled on purpose:
+    # a recorded run had the macOS system-update step auto-consent through
+    # --yes to downloading a full macOS upgrade and prompt for a password
+    # mid-routine; an OS upgrade is a policy decision, not part of maintenance.
     local tg=(topgrade --yes --no-ask-retry
-        --disable gem --disable ruby_gems --disable microsoft_office)
+        --disable gem --disable ruby_gems --disable microsoft_office
+        --disable system)
     if ! containers_running; then
         printf '\n(no container runtime is answering; Containers step disabled to avoid the retry prompt)\n'
         tg+=(--disable containers)
@@ -212,7 +253,13 @@ main() {
 
     printf '\n==> final Ruby/gem health\n'
     rgh_report
-    printf '\n=== %s finished; no ownership or version drift at any step ===\n' "$PROGRAM_NAME"
+    local health_rc=$?
+    if [ "$health_rc" -eq 0 ]; then
+        printf '\n=== %s finished; no ownership or version drift at any step ===\n' "$PROGRAM_NAME"
+    else
+        printf '\n=== %s finished; FAIL lines above - no ownership or version drift during the routine, but health is not clean ===\n' "$PROGRAM_NAME"
+    fi
+    exit "$health_rc"
 }
 
 main "$@"
