@@ -74,7 +74,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install shellcheck shfmt bats-core
+          brew install shellcheck shfmt bats-core topgrade
 
       - name: Verify macOS tool versions
         if: runner.os == 'macOS'

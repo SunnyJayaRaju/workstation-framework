@@ -437,6 +437,13 @@ auto-consent through `--yes` to downloading a full macOS upgrade and prompt
 for a password mid-routine. An OS upgrade is a deliberate decision, not part
 of this routine.
 
+Two prompts can still appear, and both are yours to answer: `mo clean`'s
+admin check, and a Homebrew cask upgrade asking for your password to remove
+an app's auto-update service. The routine waits for you — a recorded run
+sat at that password prompt for 45 minutes (VS Code, 2026-11-11), which is
+where a "48-minute" routine actually goes. Run the routine when you can be
+at the keyboard.
+
 ### Bypassing the guard
 
 The guard is bypassed with an explicit environment variable, deliberately and
