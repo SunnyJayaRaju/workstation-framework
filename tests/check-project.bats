@@ -311,3 +311,19 @@ make_project_missing() {
     run bash -c "grep -rl 'COLOR_' '${SCRIPTS_DIR}' 2>/dev/null | grep -v 'lib/logging.sh' | wc -l | tr -d ' '"
     [ "$output" = "0" ]
 }
+
+# --- README version references must match the VERSION file ----------------
+# The badge drifted behind VERSION: the v2.4.0 tag shipped with the badge
+# still reading v2.3.0 (verified against the tag). The claim is now checked
+# instead of assumed.
+
+@test "README version badge and Current Release match VERSION" {
+    local version
+    version="$(cat "${PROJECT_ROOT}/VERSION")"
+
+    run grep -qF "version-v${version}-blue" "${PROJECT_ROOT}/README.md"
+    [ "$status" -eq 0 ]
+
+    run grep -qF "**Version:** **v${version}**" "${PROJECT_ROOT}/README.md"
+    [ "$status" -eq 0 ]
+}

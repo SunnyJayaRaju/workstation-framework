@@ -8,7 +8,7 @@
 ![ShellCheck](https://img.shields.io/badge/ShellCheck-enabled-4EAA25?logo=shellcheck&logoColor=white)
 ![Bats](https://img.shields.io/badge/Bats-enabled-4EAA25?logo=bats&logoColor=white)
 ![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
-![Version](https://img.shields.io/badge/version-v2.3.0-blue)
+![Version](https://img.shields.io/badge/version-v2.4.0-blue)
 
 ---
 
@@ -197,7 +197,7 @@ Release
 
 # Current Release
 
-**Version:** **v2.3.0**
+**Version:** **v2.4.0**
 
 ### Highlights
 
@@ -231,6 +231,7 @@ workstation-framework/
 │   ├── repo-clean.sh
 │   ├── doctor.sh
 │   ├── install.sh
+│   ├── mac-routine.sh
 │   ├── restore.sh
 │   ├── shell-quality.sh
 │   ├── sync.sh

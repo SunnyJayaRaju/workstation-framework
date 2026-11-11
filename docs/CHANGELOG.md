@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 ## [Unreleased]
 
-Not yet released. Nothing has landed since 2.4.0.
+Follow-ups landed since 2.4.0. They ship with the next version bump.
 
 ### Changed
 
@@ -16,16 +16,13 @@ Not yet released. Nothing has landed since 2.4.0.
   printed the check's verdict and the final health report printed the same
   verdict again a few lines later. The NOTE now explains the decision and
   points at the report, which carries the PASS line.
-
-### Documented
-
-- **The password prompts the routine can still ask for.** The script
-  claimed it never hangs on a prompt, and that is true of its own prompts
-  (`--no-ask-retry`, Containers step). But a Homebrew cask upgrade can ask
-  for your password to remove an app's auto-update service, and the routine
-  waits: a recorded 2026-11-11 run spent 45 of its 48 minutes at that
-  prompt (VS Code). The header and README now say so, and say to run the
-  routine when you can be at the keyboard.
+- **The password prompts the routine can still ask for are documented.** The
+  script claimed it never hangs on a prompt, and that is true of its own
+  prompts (`--no-ask-retry`, Containers step). But a Homebrew cask upgrade
+  can ask for your password to remove an app's auto-update service, and the
+  routine waits: a recorded 2026-11-11 run spent 45 of its 48 minutes at
+  that prompt (VS Code). The header and README now say so, and say to run
+  the routine when you can be at the keyboard.
 
 ### Fixed
 
@@ -303,38 +300,6 @@ exercise the behaviour it claimed to cover.
 ---
 
 ## [2.0.0] - 2026-09-21
-
-### Fixed
-
-1. **bootstrap.sh removed** — Pure duplication of install.sh with no added value. Eliminated confusion and maintenance burden.
-
-2. **doctor.sh now exits non-zero on failures** — Added failure tracking; log_fail calls increment counter; main() exits 1 if any check failed. Previously printed "✗" but always exited 0.
-
-3. **doctor.sh excludes install.sh/update.sh from installed execution check** — install.sh is the installer (not installed); update.sh requires install.sh. Fixed false "✗ install.sh" and "✗ update.sh execution failed" post-install.
-
-4. **uninstall.sh discovers INSTALL_DIR from marker file** — install.sh writes .install_dir marker; uninstall.sh reads it before loading config. Fixes silent failure when custom INSTALL_DIR used without env var.
-
-5. **Config precedence verified** — Environment variables correctly override user.conf and default.conf (env var > user.conf > default.conf). Matches documented precedence and least-surprise CLI behavior.
-
-6. **backup.sh creates files with mode 600** — Added chmod 600 after cp to ensure backups are owner-readable/writable only.
-
-7. **check-project.sh and repo-clean.sh operate from repository root** — check-project.sh cds to repo root before checks; repo-clean.sh already used PROJECT_ROOT; added documentation header describing scope.
-
-### Added
-
-- Failure-path tests for doctor.sh, check-project.sh, and install.sh (missing .git, bad INSTALL_DIR, missing dependencies)
-- CI steps for `make check` and `make doctor` to exercise these targets
-
-### Changed
-
-- Removed bootstrap.sh entirely (was zero-value wrapper)
-- Removed bootstrap.sh tests and references from README
-- Updated uninstall.sh to read .install_dir marker file
-- Updated install.sh to write .install_dir marker file
-
----
-
-## [1.0.0] - 2026-07-17
 
 ### Fixed
 
