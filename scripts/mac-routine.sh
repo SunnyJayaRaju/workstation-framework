@@ -21,10 +21,15 @@
 #
 # NEVER
 #   - calls sudo. The fix commands it prints are for the user to run.
-#   - hangs on a prompt. topgrade runs --no-ask-retry, and the Containers step
-#     is disabled when no container runtime is running. The flag set was read
-#     out of `topgrade --help` on 2026-10-10 (topgrade 17.12.3), re-verified
-#     against 17.16.0 on 2026-11-11, and pinned by a test.
+#   - hangs on a prompt of its own. topgrade runs --no-ask-retry, and the
+#     Containers step is disabled when no container runtime is running. The
+#     flag set was read out of `topgrade --help` on 2026-10-10 (topgrade
+#     17.12.3), re-verified against 17.16.0 on 2026-11-11, and pinned by a
+#     test. One external prompt remains possible: a Homebrew cask upgrade
+#     may ask for your password to remove an app's auto-update service
+#     (measured live with the VS Code cask on 2026-11-11, where the wait
+#     ran 45 minutes). The routine waits for you; run it when you can be
+#     at the keyboard to type your password.
 #   - deletes anything.
 #   - upgrades the OS. `--disable system` keeps the macOS system-update step
 #     out of a maintenance run: a recorded run had that step auto-consent
@@ -130,7 +135,7 @@ accept() {
 # are reported separately because they have different causes: a new root-owned
 # file is a privilege problem, a changed gem -v is a RubyGems override problem.
 drift_check() {
-    local where="$1" drifted=0 p parity
+    local where="$1" drifted=0 p
 
     if [ "$ROOT_HB" != "$PREV_HB" ] || [ "$ROOT_GEM" != "$PREV_GEM" ]; then
         drifted=1
@@ -147,18 +152,15 @@ drift_check() {
     fi
 
     if [ "$GEMV" != "$PREV_GEMV" ]; then
-        # A changed gem -v has two causes with different verdicts. A Ruby keg
-        # upgrade moves BOTH the active and the shipped version - parity
-        # holds. A site_ruby override moves only the active one - parity
-        # breaks, and that is the 2026-09-16 damage. Parity of the new state
-        # decides, so a legitimate upgrade does not abort the routine.
-        if parity="$(rgh_check_gem_version_parity)"; then
+        # Parity of the new state decides the verdict. Its PASS line is
+        # printed by the final health report, so the NOTE only explains the
+        # decision - the check's own output is discarded here either way.
+        if rgh_check_gem_version_parity >/dev/null; then
             printf '\nNOTE after step: %s\n' "$where"
             printf '  gem -v changed: %s -> %s\n' "$PREV_GEMV" "$GEMV"
-            printf '%s\n' "$parity"
             printf '  the active version matches what the active Ruby ships:\n'
-            printf '  a Ruby keg upgrade, not an override. Continuing; the final\n'
-            printf '  health report decides whether the new keg left anything dangling.\n'
+            printf '  a Ruby keg upgrade, not an override. Continuing; the PASS\n'
+            printf '  line from this same check appears in the final health report.\n'
         else
             drifted=1
             printf '\nSTOPPED after step: %s\n' "$where"

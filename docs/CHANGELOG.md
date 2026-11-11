@@ -10,6 +10,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and follo
 
 Not yet released. Nothing has landed since 2.4.0.
 
+### Changed
+
+- **The keg-upgrade NOTE no longer duplicates the parity PASS line.** It
+  printed the check's verdict and the final health report printed the same
+  verdict again a few lines later. The NOTE now explains the decision and
+  points at the report, which carries the PASS line.
+
+### Documented
+
+- **The password prompts the routine can still ask for.** The script
+  claimed it never hangs on a prompt, and that is true of its own prompts
+  (`--no-ask-retry`, Containers step). But a Homebrew cask upgrade can ask
+  for your password to remove an app's auto-update service, and the routine
+  waits: a recorded 2026-11-11 run spent 45 of its 48 minutes at that
+  prompt (VS Code). The header and README now say so, and say to run the
+  routine when you can be at the keyboard.
+
+### Fixed
+
+- **The topgrade flag pin is now a real check in CI.** The test that pins
+  the four `--disable` step ids against topgrade's own help skipped on CI,
+  because no runner had topgrade. The macOS quality job now installs it,
+  so a step-id rename in a future topgrade release fails the required
+  check instead of silently re-enabling, for example, the macOS system
+  update.
+
 ---
 
 ## [2.4.0] - 2026-11-11
