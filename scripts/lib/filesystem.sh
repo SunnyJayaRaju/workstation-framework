@@ -39,16 +39,3 @@ ensure_directory() {
 
     create_directory "$DIRECTORY"
 }
-
-copy_file() {
-    local SOURCE="$1"
-    local DESTINATION="$2"
-
-    cp -p "$SOURCE" "$DESTINATION"
-}
-
-remove_file() {
-    local FILE="$1"
-
-    rm -f "$FILE"
-}

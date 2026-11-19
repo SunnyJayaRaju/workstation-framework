@@ -20,12 +20,6 @@ check_command_exists() {
     command -v "$command" >/dev/null 2>&1
 }
 
-check_variable_set() {
-    local variable="$1"
-
-    [[ -n "${!variable:-}" ]]
-}
-
 # Check path exists and log result (backward compatible with check-project.sh)
 check_exists() {
     local path="$1"

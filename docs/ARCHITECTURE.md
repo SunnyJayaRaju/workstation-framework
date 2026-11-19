@@ -200,8 +200,6 @@ store_secret "api-key" "my-secret-value"
 # Delete a secret
 delete_secret "old-token"
 
-# List all stored secrets
-list_secrets
 ```
 
 ## Direct Backend Access
