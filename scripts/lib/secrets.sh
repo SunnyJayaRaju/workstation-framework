@@ -208,14 +208,6 @@ delete_secret() {
     fi
 }
 
-# List all stored secrets
-list_secrets() {
-    if has_keychain; then
-        security find-generic-password -s "workstation-framework" 2>/dev/null |
-            grep "acct=" | sed -E 's/.*acct="([^"]+)".*/\1/'
-    fi
-}
-
 # Deliberately NOT exported. An exported guard is inherited by child shells,
 # so any child that sources this file takes the "already loaded" early-return
 # above and ends up with NONE of these functions defined, silently.
