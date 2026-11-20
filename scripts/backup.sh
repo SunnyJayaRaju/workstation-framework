@@ -156,8 +156,16 @@ write_manifest() {
 
     # 600: the manifest names the user's real dotfile paths. Written via a
     # temp file and moved into place so a reader never sees a partial manifest.
-    chmod 600 "$tmp"
-    mv -f "$tmp" "$manifest"
+    if ! chmod 600 "$tmp"; then
+        rm -f "$tmp"
+        log_warn "Could not write backup manifest; restores will not be verified."
+        return 1
+    fi
+    if ! mv -f "$tmp" "$manifest"; then
+        rm -f "$tmp"
+        log_warn "Could not write backup manifest; restores will not be verified."
+        return 1
+    fi
     log_pass "Manifest written: ${manifest}"
 }
 
@@ -222,8 +230,14 @@ main() {
 
     echo
     if [[ $failed -eq 0 ]]; then
-        # Only now, with every source confirmed on disk.
-        write_manifest "${BACKUP_DIR}" "${TIMESTAMP}" || true
+        # Only now, with every source confirmed on disk. A manifest that cannot
+        # be written is a failed run: the backups exist, but nothing records
+        # their hashes, so restore.sh cannot verify them.
+        if ! write_manifest "${BACKUP_DIR}" "${TIMESTAMP}"; then
+            log_fail "Backup files were written, but the manifest could not be saved."
+            log_info "This run cannot be integrity-checked; treat it as failed."
+            exit 1
+        fi
         log_pass "Backup completed successfully."
     else
         log_fail "Backup completed with errors."

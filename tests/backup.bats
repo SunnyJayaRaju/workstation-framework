@@ -238,9 +238,25 @@ teardown() {
     local stub="${BATS_TEST_TMPDIR}/copystub"
     mkdir -p "$stub"
     : >"$stub/calls.log"
+
+    # Resolve the real binaries BEFORE putting the stub directory on PATH.
+    # Hard-coding /usr/bin/... broke on macOS, where chmod lives in /bin:
+    # the stub exited 127, and the old backup.sh ignored that failure. The
+    # manifest fix makes it fatal, so the stub must point at something real.
+    local real_install real_cp real_chmod
+    real_install="$(command -v install)"
+    real_cp="$(command -v cp)"
+    real_chmod="$(command -v chmod)"
+
     for tool in install cp chmod; do
-        printf '#!/usr/bin/env bash\necho "%s $*" >> "%s"\nexec /usr/bin/%s "$@"\n' \
-            "$tool" "$stub/calls.log" "$tool" >"${stub}/$tool"
+        local real
+        case "$tool" in
+            install) real="$real_install" ;;
+            cp) real="$real_cp" ;;
+            chmod) real="$real_chmod" ;;
+        esac
+        printf '#!/usr/bin/env bash\necho "%s $*" >> "%s"\nexec "%s" "$@"\n' \
+            "$tool" "$stub/calls.log" "$real" >"${stub}/$tool"
         chmod +x "${stub}/$tool"
     done
 
@@ -411,4 +427,27 @@ dir_mode() {
 
     run bash -c 'find "$1" -type f ! -perm 600 | wc -l | tr -d " "' _ "$BACKUP_DIR"
     [ "$output" = "0" ]
+}
+
+@test "backup.sh fails when the manifest cannot be written" {
+    # The manifest is what lets restore.sh tell an intact backup from a
+    # corrupted one. If it cannot be written, the run must not report success:
+    # the backup files exist, but nothing records their hashes.
+    #
+    # `mv` is the step that publishes the finished manifest. A stub that fails
+    # is the smallest way to make that step fail without changing permissions.
+    mkdir -p "${BATS_TEST_TMPDIR}/bin"
+    cat >"${BATS_TEST_TMPDIR}/bin/mv" <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+    chmod +x "${BATS_TEST_TMPDIR}/bin/mv"
+
+    run env PATH="${BATS_TEST_TMPDIR}/bin:${PATH}" \
+        BACKUP_DIR="$BACKUP_DIR" BACKUP_SOURCES=".zshrc" \
+        bash "${SCRIPTS_DIR}/backup.sh"
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"manifest"* ]]
+    [[ "$output" != *"Backup completed successfully."* ]]
 }
