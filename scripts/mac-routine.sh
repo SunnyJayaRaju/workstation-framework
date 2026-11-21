@@ -72,13 +72,16 @@ Environment:
 
 Exit codes:
   0   every step ran and the final health report has no FAIL line (a WARN is still 0)
-  1   the final health report found damage - see its FAIL lines
+  1   the final health report found damage, or a step exited non-zero - see its FAIL lines
   2   usage error, or the health library is unreadable
   3   a step changed ownership or broke gem parity; the routine aborted there
 EOF
 }
 
 DRY_RUN=0
+# Steps that exited non-zero. The routine keeps going (a failed step is not
+# damage), but the final line must name them and the exit code must say so.
+FAILED_STEPS=()
 # PREV_* are forced empty here so an ambient exported variable of the same
 # name cannot seed drift_check with garbage: measure() seeds them from the
 # baseline on first use regardless.
@@ -201,7 +204,10 @@ run_step() {
         return 0
     fi
     "$@"
-    printf '    exit %d\n' "$?"
+    local rc=$?
+    printf '    exit %d\n' "$rc"
+    [ "$rc" -eq 0 ] || FAILED_STEPS+=("$label")
+    return 0
 }
 
 main() {
@@ -256,7 +262,15 @@ main() {
     printf '\n==> final Ruby/gem health\n'
     rgh_report
     local health_rc=$?
-    if [ "$health_rc" -eq 0 ]; then
+    local failed=''
+    if [ "${#FAILED_STEPS[@]}" -gt 0 ]; then
+        failed="$(printf '%s, ' "${FAILED_STEPS[@]}")"
+        failed="${failed%, }"
+    fi
+    if [ -n "$failed" ]; then
+        printf '\n=== %s finished WITH FAILED STEPS: %s ===\n' "$PROGRAM_NAME" "$failed"
+        [ "$health_rc" -ne 0 ] || health_rc=1
+    elif [ "$health_rc" -eq 0 ]; then
         printf '\n=== %s finished; no ownership or version drift at any step ===\n' "$PROGRAM_NAME"
     else
         printf '\n=== %s finished; FAIL lines above - no ownership or version drift during the routine, but health is not clean ===\n' "$PROGRAM_NAME"

@@ -537,6 +537,20 @@ EOF
     grep -q -- '--no-ask-retry' "${RT}/calls"
 }
 
+@test "mac-routine names a failed step and exits non-zero" {
+    setup_routine
+    cat >"${RT}/bin/topgrade" <<EOF
+#!/bin/sh
+echo "topgrade \$*" >> "${CALLS}"
+exit 1
+EOF
+    chmod +x "${RT}/bin/topgrade"
+    run bash "${SCRIPTS_DIR}/mac-routine.sh"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"finished WITH FAILED STEPS: topgrade"* ]]
+    [[ "$output" != *"finished; no ownership or version drift at any step"* ]]
+}
+
 @test "mac-routine stops the routine when a step creates a root-owned file" {
     setup_routine
     export RGH_ROOT_USER="$(id -un)" # stand in for root; no test can chown to root
