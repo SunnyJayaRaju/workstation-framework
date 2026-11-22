@@ -111,7 +111,12 @@ load test_helper
 }
 
 @test "the syntax gate passes on a clean tree" {
-    run make syntax
+    run make -C "$PROJECT_ROOT" syntax
+    [ "$status" -eq 0 ]
+}
+
+@test "the syntax gate passes from a foreign working directory" {
+    run bash -c "cd '$BATS_TEST_TMPDIR' && make -C '$PROJECT_ROOT' syntax"
     [ "$status" -eq 0 ]
 }
 
