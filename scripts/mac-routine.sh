@@ -243,7 +243,9 @@ main() {
     # Mole empties the whole Bin when its process has Full Disk Access and knows
     # nothing about REMOVE-AFTER-* labels. Stash unexpired labelled items out of
     # the Bin first; restore them afterwards, including when a step aborts.
-    local bin_guard="$HOME/.config/opencode/bin/bin-guard"
+    # MAC_ROUTINE_BIN_GUARD is a test seam: fixtures that stub mo clean
+    # point it at a missing path so the guard is not exercised.
+    local bin_guard="${MAC_ROUTINE_BIN_GUARD:-$HOME/.config/opencode/bin/bin-guard}"
     local stashed=0 skip_mo=0
     if [ "$DRY_RUN" != "1" ] && [ -x "$bin_guard" ]; then
         if "$bin_guard" stash; then
