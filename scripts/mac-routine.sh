@@ -240,7 +240,23 @@ main() {
 
     # 2. mo clean. Not time-boxed: it prompts, and this wrapper will not answer
     #    for the user. Mole refuses to run as root by itself.
+    # Mole empties the whole Bin when its process has Full Disk Access and knows
+    # nothing about REMOVE-AFTER-* labels. Stash unexpired labelled items out of
+    # the Bin first; restore them afterwards, including when a step aborts.
+    local bin_guard="$HOME/.config/opencode/bin/bin-guard"
+    local stashed=0
+    if [ "$DRY_RUN" != "1" ] && [ -x "$bin_guard" ]; then
+        "$bin_guard" stash && stashed=1
+    fi
+    restore_bin_items() {
+        [ "$stashed" = "1" ] || return 0
+        "$bin_guard" restore || printf 'bin-guard: RESTORE FAILED - check ~/.local/state/opencode/bin-guard-hold\n' >&2
+        stashed=0
+    }
+    trap restore_bin_items EXIT
     run_step 'mo clean' mo clean
+    restore_bin_items
+    trap - EXIT
     measure
     drift_check 'mo clean'
     show 'after mo clean'
