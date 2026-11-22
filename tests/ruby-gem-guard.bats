@@ -437,6 +437,9 @@ EOF
     # the one thing these tests must never reach.
     export PATH="${RT}/bin:${SHIM}:${FAKE_BIN_DIR}:/usr/bin:/bin"
     export RGH_LIB="${SCRIPTS_DIR}/lib/ruby_gem_health.sh"
+    # The Bin guard is not part of these fixtures; the real Trash is
+    # TCC-blocked and would make the routine skip mo clean.
+    export MAC_ROUTINE_BIN_GUARD="${RT}/no-bin-guard"
 
     # Assert the fence here rather than in each test, so every test in this file
     # inherits it and a broken PATH fails once, loudly, instead of quietly in
