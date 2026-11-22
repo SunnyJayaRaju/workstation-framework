@@ -244,9 +244,16 @@ main() {
     # nothing about REMOVE-AFTER-* labels. Stash unexpired labelled items out of
     # the Bin first; restore them afterwards, including when a step aborts.
     local bin_guard="$HOME/.config/opencode/bin/bin-guard"
-    local stashed=0
+    local stashed=0 skip_mo=0
     if [ "$DRY_RUN" != "1" ] && [ -x "$bin_guard" ]; then
-        "$bin_guard" stash && stashed=1
+        if "$bin_guard" stash; then
+            stashed=1
+        else
+            # The Bin could not be listed (e.g. macOS privacy denial). Never
+            # empty it unprotected: skip this one step and say so once.
+            printf 'bin-guard: Bin cannot be listed; skipping mo clean (unprotected Trash cleanup avoided)\n'
+            skip_mo=1
+        fi
     fi
     restore_bin_items() {
         [ "$stashed" = "1" ] || return 0
@@ -254,9 +261,15 @@ main() {
         stashed=0
     }
     trap restore_bin_items EXIT
-    run_step 'mo clean' mo clean
+    trap 'restore_bin_items; exit 130' INT
+    trap 'restore_bin_items; exit 143' TERM
+    if [ "$skip_mo" -eq 1 ]; then
+        printf '    (mo clean skipped: Bin could not be listed)\n'
+    else
+        run_step 'mo clean' mo clean
+    fi
     restore_bin_items
-    trap - EXIT
+    trap - EXIT INT TERM
     measure
     drift_check 'mo clean'
     show 'after mo clean'
