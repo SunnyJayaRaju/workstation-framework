@@ -208,8 +208,8 @@ The repository includes:
 Development follows a consistent lifecycle:
 
 ```mermaid
-flowchart LR
-  A[Design] --> B[Implement] --> C[Validate] --> D[Test] --> E[Review] --> F[Release]
+flowchart TD
+  A["📐 Design"] --> B["⚒️ Implement"] --> C["✅ Validate"] --> D["🧪 Test"] --> E["🔍 Review"] --> F["📤 Release"]
 ```
 
 ---
@@ -523,8 +523,8 @@ the command and you run it.
 Every contribution should follow the same engineering workflow.
 
 ```mermaid
-flowchart LR
-  A[Plan] --> B[Implement] --> C[Validate] --> D[Test] --> E[Review] --> F[Commit]
+flowchart TD
+  A["📋 Plan"] --> B["⚒️ Implement"] --> C["✅ Validate"] --> D["🧪 Test"] --> E["🔍 Review"] --> F["💾 Commit"]
 ```
 
 The objective is to maintain a repository where every change is reproducible, reviewable, and well documented.
