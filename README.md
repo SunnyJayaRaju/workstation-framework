@@ -1,6 +1,8 @@
 # Developer Workstation Framework
 
-> An engineering-first framework for building, managing, validating, and evolving a professional macOS development workstation using modern Bash engineering practices.
+## At a glance
+
+An engineering-first framework for building, maintaining and validating a reproducible macOS development workstation with Bash.
 
 ![Platform](https://img.shields.io/badge/platform-macOS-black?logo=apple)
 ![Shell](https://img.shields.io/badge/shell-Bash-4EAA25?logo=gnu-bash)
@@ -10,19 +12,61 @@
 ![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
 ![Version](https://img.shields.io/badge/version-v2.4.0-blue)
 
+```bash
+git clone https://github.com/SunnyJayaRaju/workstation-framework.git
+cd workstation-framework
+./scripts/install.sh
+```
+
+---
+
+## Table of contents
+
+- [At a glance](#at-a-glance)
+- [Overview](#overview)
+- [Why this project?](#why-this-project)
+- [Design philosophy](#design-philosophy)
+- [Key features](#key-features)
+- [Technology stack](#technology-stack)
+- [Current release](#current-release)
+- [Repository structure](#repository-structure)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Available utilities](#available-utilities)
+- [Ruby and Homebrew: three rules](#ruby-and-homebrew-three-rules)
+- [Development workflow](#development-workflow)
+- [Development commands](#development-commands)
+- [Automated testing](#automated-testing)
+- [Continuous integration](#continuous-integration)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+
+
+> An engineering-first framework for building, managing, validating and evolving a professional macOS
+> development workstation using modern Bash engineering practices.
+
+
+
 ---
 
 ## Overview
 
-Developer Workstation Framework is a structured, engineering-focused toolkit for building and maintaining a reproducible macOS development environment.
+Developer Workstation Framework is a structured, engineering-focused toolkit for building and maintaining
+a reproducible macOS development environment.
 
-Rather than collecting standalone shell scripts over time, this project treats workstation management as a software engineering discipline. Every utility follows common coding standards, centralized configuration, reusable libraries, automated validation, behavioral testing, and continuous integration.
+Rather than collecting standalone shell scripts over time, this project treats workstation management as a
+software engineering discipline. Every utility follows common coding standards, centralized configuration,
+reusable libraries, automated validation, behavioral testing and continuous integration.
 
 The result is a framework that is easier to understand, extend, maintain, and confidently evolve over time.
 
 ---
 
-# Why This Project?
+## Why This Project?
 
 Most workstation setup repositories eventually become difficult to maintain because they evolve organically:
 
@@ -32,45 +76,46 @@ Most workstation setup repositories eventually become difficult to maintain beca
 - Validation becomes manual.
 - Small changes introduce regressions.
 
-Developer Workstation Framework addresses these problems by organizing workstation automation into a maintainable engineering project with clearly separated responsibilities.
+Developer Workstation Framework addresses these problems by organizing workstation automation into a maintainable
+engineering project with clearly separated responsibilities.
 
 Instead of treating infrastructure as a collection of scripts, the repository treats it as real software.
 
 ---
 
-# Design Philosophy
+## Design Philosophy
 
 The framework is guided by several engineering principles.
 
-## Reusability
+### Reusability
 
 Common functionality belongs in shared libraries instead of being duplicated across utilities.
 
-## Simplicity
+### Simplicity
 
 Each script should perform one responsibility well.
 
-## Maintainability
+### Maintainability
 
 Readable code is preferred over clever code.
 
-## Automation
+### Automation
 
 Quality verification should be automated whenever possible.
 
-## Consistency
+### Consistency
 
 Every utility follows the same project structure, coding standards, logging style, and validation process.
 
-## Reliability
+### Reliability
 
 Configuration, testing, and validation should produce deterministic results both locally and in continuous integration environments.
 
 ---
 
-# Key Features
+## Key Features
 
-## Modular Bash Architecture
+### Modular Bash Architecture
 
 Shared libraries eliminate duplicated logic and provide reusable functionality for:
 
@@ -83,7 +128,7 @@ Shared libraries eliminate duplicated logic and provide reusable functionality f
 
 ---
 
-## Centralized Configuration
+### Centralized Configuration
 
 Configuration is managed through dedicated configuration files with predictable precedence.
 
@@ -97,7 +142,7 @@ This allows local customization without modifying repository defaults while rema
 
 ---
 
-## Built-in Utilities
+### Built-in Utilities
 
 The framework includes utilities for:
 
@@ -112,7 +157,7 @@ The framework includes utilities for:
 - Cleanup
 - Shell quality validation
 
-### Where the utilities are installed
+#### Where the utilities are installed
 
 `install.sh` writes every utility to `INSTALL_DIR`, which defaults to
 `~/.local/bin`. That directory must be on your `PATH` for the utilities to be
@@ -121,7 +166,7 @@ reinstalls in place. See `config/default.conf` for `INSTALL_DIR`.
 
 ---
 
-## Quality Assurance
+### Quality Assurance
 
 Every change is verified using:
 
@@ -131,7 +176,7 @@ Every change is verified using:
 - Automated Bats behavioral tests
 - GitHub Actions Continuous Integration
 
-### Reproducing CI locally
+#### Reproducing CI locally
 
 - `make ci-local` prints your `bash`, `bats`, `shellcheck` and `shfmt` versions, warns when they differ from CI's pins, then runs CI's steps in order: `syntax`, `shellcheck -x`, `shfmt -d -i 4 -ci`, `bats tests`, `make check`, `make doctor`.
 - `make test-bash32` runs the whole suite under `/bin/bash`, which is bash 3.2 on macOS; it skips with a message on systems without `/bin/bash`.
@@ -143,7 +188,7 @@ Every change is verified using:
 
 ---
 
-## Documentation-Driven Development
+### Documentation-Driven Development
 
 Documentation is treated as part of the codebase.
 
@@ -158,27 +203,18 @@ The repository includes:
 
 ---
 
-## Engineering Workflow
+### Engineering Workflow
 
 Development follows a consistent lifecycle:
 
-```text
-Design
-    ↓
-Implement
-    ↓
-Validate
-    ↓
-Test
-    ↓
-Review
-    ↓
-Release
+```mermaid
+flowchart LR
+  A[Design] --> B[Implement] --> C[Validate] --> D[Test] --> E[Review] --> F[Release]
 ```
 
 ---
 
-# Technology Stack
+## Technology Stack
 
 | Category           | Technology         |
 | ------------------ | ------------------ |
@@ -195,7 +231,7 @@ Release
 
 ---
 
-# Current Release
+## Current Release
 
 **Version:** **v2.4.0**
 
@@ -208,11 +244,11 @@ Release
 - Continuous Integration
 - Engineering documentation
 - Reusable workstation utilities
-- Production-ready project structure
+- Consistent project structure
 
 ---
 
-# Repository Structure
+## Repository Structure
 
 ```text
 workstation-framework/
@@ -248,7 +284,7 @@ The repository is intentionally organized to separate framework logic, reusable 
 
 ---
 
-# Prerequisites
+## Prerequisites
 
 Developer Workstation Framework currently targets macOS.
 
@@ -268,7 +304,7 @@ Recommended:
 
 ---
 
-# Installation
+## Installation
 
 Clone the repository:
 
@@ -292,11 +328,11 @@ Verify the installation:
 
 ---
 
-# Configuration
+## Configuration
 
 Framework configuration is stored in the `config/` directory.
 
-```
+```text
 config/
 ├── default.conf
 ├── example.conf
@@ -332,7 +368,7 @@ No repository files need to be modified for temporary configuration changes.
 
 ---
 
-# Available Utilities
+## Available Utilities
 
 | Script             | Description                                                                                                                       |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -350,7 +386,7 @@ No repository files need to be modified for temporary configuration changes.
 
 ---
 
-# Ruby and Homebrew: three rules
+## Ruby and Homebrew: three rules
 
 These exist because of a real event on **2026-09-16**. A RubyGems **4.0.21**
 source tree — 591 files — was written into
@@ -363,7 +399,10 @@ and `brew cleanup`, and the weekly routine could not finish.
 timestamps, its oldest per-session file begins 25 Sep, and macOS keeps no sudo
 log. Do not repeat that claim as fact.
 
-## 1. Never use `sudo` with `gem` or `brew`
+<details>
+<summary>The three rules, the guard and the harness check</summary>
+
+### 1. Never use `sudo` with `gem` or `brew`
 
 ```bash
 brew install <name>     # yes
@@ -391,7 +430,7 @@ If a root-owned file appears anyway, the fix — which needs your password — i
 sudo find /opt/homebrew -user root -exec chown -h "$(whoami)":admin {} +
 ```
 
-## 2. Never run `gem update --system`
+### 2. Never run `gem update --system`
 
 Against a Homebrew Ruby it installs a whole RubyGems source tree into
 `site_ruby`, shadowing the one the keg ships. It is also the command the
@@ -405,10 +444,10 @@ If an override does appear, move it aside rather than deleting it:
 ```bash
 TS=$(date +%Y%m%d-%H%M%S); mkdir -p ~/Developer/Backups/site_ruby-stale-$TS
 mv /opt/homebrew/lib/ruby/site_ruby/* ~/Developer/Backups/site_ruby-stale-$TS/
-# undo: mv ~/Developer/Backups/site_ruby-stale-$TS/* /opt/homebrew/lib/ruby/site_ruby/
+## undo: mv ~/Developer/Backups/site_ruby-stale-$TS/* /opt/homebrew/lib/ruby/site_ruby/
 ```
 
-## 3. Run the routine through `mac-routine.sh`
+### 3. Run the routine through `mac-routine.sh`
 
 ```bash
 mac-routine.sh          # the real thing
@@ -445,7 +484,7 @@ sat at that password prompt for 45 minutes (VS Code, 2026-11-11), which is
 where a "48-minute" routine actually goes. Run the routine when you can be
 at the keyboard.
 
-### Bypassing the guard
+#### Bypassing the guard
 
 The guard is bypassed with an explicit environment variable, deliberately and
 per-invocation:
@@ -457,7 +496,7 @@ ALLOW_RISKY_GEM=1 sudo gem install <name>
 Run `bash ~/Developer/Tools/scripts/verify-setup.sh` afterwards and read the
 **Ruby/gem health** section.
 
-### What the harness checks
+#### What the harness checks
 
 `lib/ruby_gem_health.sh` is the single implementation, used by
 `verify-setup.sh`, by `mac-routine.sh` between steps, and by
@@ -476,31 +515,23 @@ Run `bash ~/Developer/Tools/scripts/verify-setup.sh` afterwards and read the
 Every FAIL prints the exact fix. **The harness never runs `sudo`** — it prints
 the command and you run it.
 
+</details>
 ---
 
-# Development Workflow
+## Development Workflow
 
 Every contribution should follow the same engineering workflow.
 
-```
-Plan
- ↓
-Implement
- ↓
-Validate
- ↓
-Test
- ↓
-Review
- ↓
-Commit
+```mermaid
+flowchart LR
+  A[Plan] --> B[Implement] --> C[Validate] --> D[Test] --> E[Review] --> F[Commit]
 ```
 
 The objective is to maintain a repository where every change is reproducible, reviewable, and well documented.
 
 ---
 
-# Development Commands
+## Development Commands
 
 The project uses a Makefile to simplify routine tasks.
 
@@ -518,9 +549,19 @@ Before every commit, run:
 make all
 ```
 
+Before committing, `make check` is a quick read-only structure check. Verified locally:
+
+```bash
+make check
+```
+
+```text
+[PASS] Repository structure verified.
+```
+
 ---
 
-# Automated Testing
+## Automated Testing
 
 Behavioral testing is implemented using Bats.
 
@@ -544,7 +585,7 @@ Current status:
 
 ---
 
-# Continuous Integration
+## Continuous Integration
 
 Every push and pull request automatically runs:
 
@@ -553,11 +594,11 @@ Every push and pull request automatically runs:
 - shfmt verification
 - Automated Bats tests
 
-This helps ensure that every change remains production ready.
+This helps ensure that every change remains ready to merge.
 
 ---
 
-# Documentation
+## Documentation
 
 Detailed project documentation is available in the `docs/` directory.
 
@@ -572,9 +613,9 @@ Included documentation:
 
 ---
 
-# Roadmap
+## Roadmap
 
-## Future Enhancements
+### Future Enhancements
 
 Future enhancements may include:
 
@@ -589,7 +630,7 @@ The project will continue to prioritize maintainability, modularity, and enginee
 
 ---
 
-# Contributing
+## Contributing
 
 Contributions are welcome.
 
@@ -609,7 +650,7 @@ passes successfully.
 
 ---
 
-# License
+## License
 
 This project is licensed under the MIT License.
 
@@ -617,7 +658,7 @@ See the `LICENSE` file for details.
 
 ---
 
-# Acknowledgements
+## Acknowledgements
 
 Developer Workstation Framework was built with a strong emphasis on software engineering principles rather than simple shell scripting.
 
