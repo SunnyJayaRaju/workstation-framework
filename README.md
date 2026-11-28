@@ -224,10 +224,15 @@ flowchart LR
 
 ```text
 workstation-framework/
+├── .editorconfig           # Shared editor settings
 ├── .github/                # GitHub workflows, templates, CODEOWNERS
+├── .gitignore              # Files ignored by Git
+├── .shellcheckrc           # ShellCheck configuration
 ├── .vscode/                # Recommended VS Code configuration
 ├── assets/                 # Project assets
+├── CODE_OF_CONDUCT.md      # Community conduct policy
 ├── config/                 # Framework configuration
+├── CONTRIBUTING.md         # Contribution guide
 │   ├── default.conf
 │   ├── example.conf
 │   └── user.conf
@@ -245,11 +250,13 @@ workstation-framework/
 │   ├── sync.sh
 │   ├── uninstall.sh
 │   └── update.sh
+├── SECURITY.md             # Security policy
 ├── templates/              # Script templates
 ├── tests/                  # Automated Bats tests
+├── LICENSE
 ├── Makefile
 ├── README.md
-└── LICENSE
+└── VERSION
 ```
 
 The repository is intentionally organized to separate framework logic, reusable libraries, configuration, documentation, testing, and project assets.
@@ -550,14 +557,25 @@ Current status:
 
 ## 🤖 Continuous Integration
 
-Every push and pull request automatically runs:
+The `Shell Quality` workflow (`.github/workflows/quality.yml`) runs on pushes to
+`main` and on pull requests targeting `main`. New commits supersede older runs of
+the same pull request; runs on `main` are never cancelled.
 
-- Bash syntax validation
-- ShellCheck
-- shfmt verification
-- Automated Bats tests
+One job, `Shell Quality Checks`, runs on two pinned runners: `ubuntu-24.04` and
+`macos-15`, with `fail-fast` disabled so both complete even if one fails. Ubuntu
+installs pinned versions of ShellCheck, shfmt, Bats and zsh; macOS installs them
+with Homebrew and asserts the expected versions.
 
-This helps ensure that every change remains ready to merge.
+The steps are:
+
+- Bash syntax validation (`bash -n`) of `scripts/` and `templates/`
+- ShellCheck static analysis (`shellcheck -x`) of the same files
+- shfmt formatting verification (`shfmt -d -i 4 -ci`)
+- zsh syntax validation of `templates/guard.zsh`
+- On macOS, the full Bats suite under the bash 3.2 shipped as `/bin/bash`
+- The Bats suite, followed by `make check` and `make doctor`
+
+Both legs must pass before a pull request is ready to merge.
 
 ## 📚 Documentation
 
