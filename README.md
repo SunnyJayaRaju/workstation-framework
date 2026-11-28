@@ -1,59 +1,47 @@
 # Developer Workstation Framework
 
-## At a glance
+## 📌 At A Glance
 
 An engineering-first framework for building, maintaining and validating a reproducible macOS development workstation with Bash.
 
-![Platform](https://img.shields.io/badge/platform-macOS-black?logo=apple)
-![Shell](https://img.shields.io/badge/shell-Bash-4EAA25?logo=gnu-bash)
-![CI](https://img.shields.io/github/actions/workflow/status/SunnyJayaRaju/workstation-framework/quality.yml?branch=main&label=CI)
-![ShellCheck](https://img.shields.io/badge/ShellCheck-enabled-4EAA25?logo=shellcheck&logoColor=white)
-![Bats](https://img.shields.io/badge/Bats-enabled-4EAA25?logo=bats&logoColor=white)
-![License](https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework)
-![Version](https://img.shields.io/badge/version-v2.4.0-blue)
+<p align="center">
+  <a href="https://www.apple.com/macos/"><img alt="Platform: macOS" src="https://img.shields.io/badge/platform-macOS-black?logo=apple&style=flat-square" /></a>
+  <a href="https://www.gnu.org/software/bash/"><img alt="Shell: Bash" src="https://img.shields.io/badge/shell-Bash-4EAA25?logo=gnu-bash&style=flat-square" /></a>
+  <a href="https://github.com/SunnyJayaRaju/workstation-framework/actions/workflows/quality.yml"><img alt="CI: Shell Quality" src="https://img.shields.io/github/actions/workflow/status/SunnyJayaRaju/workstation-framework/quality.yml?branch=main&label=CI&style=flat-square" /></a>
+  <a href="https://www.shellcheck.net/"><img alt="ShellCheck: enabled" src="https://img.shields.io/badge/ShellCheck-enabled-4EAA25?logo=shellcheck&logoColor=white&style=flat-square" /></a>
+  <a href="https://github.com/bats-core/bats-core"><img alt="Bats: enabled" src="https://img.shields.io/badge/Bats-enabled-4EAA25?logo=bats&logoColor=white&style=flat-square" /></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/SunnyJayaRaju/workstation-framework?style=flat-square" /></a>
+  <a href="https://github.com/SunnyJayaRaju/workstation-framework/releases"><img alt="Version: v2.4.0" src="https://img.shields.io/badge/version-v2.4.0-blue?style=flat-square" /></a>
+</p>
 
-```bash
-git clone https://github.com/SunnyJayaRaju/workstation-framework.git
-cd workstation-framework
-./scripts/install.sh
-```
+The full setup steps are in [Installation](#-installation).
 
----
+## 🗂️ Table of Contents
 
-## Table of contents
+- [At A Glance](#-at-a-glance)
+- [Overview](#-overview)
+- [Why This Project?](#-why-this-project)
+- [Design Philosophy](#-design-philosophy)
+- [Key Features](#-key-features)
+- [Technology Stack](#-technology-stack)
+- [Current Release](#-current-release)
+- [Repository Structure](#-repository-structure)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Configuration](#%EF%B8%8F-configuration)
+- [Available Utilities](#-available-utilities)
+- [Ruby and Homebrew: Three Rules](#-ruby-and-homebrew-three-rules)
+- [Development Workflow](#-development-workflow)
+- [Development Commands](#%EF%B8%8F-development-commands)
+- [Automated Testing](#-automated-testing)
+- [Continuous Integration](#-continuous-integration)
+- [Documentation](#-documentation)
+- [Roadmap](#%EF%B8%8F-roadmap)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Acknowledgements](#-acknowledgements)
 
-- [At a glance](#at-a-glance)
-- [Overview](#overview)
-- [Why this project?](#why-this-project)
-- [Design philosophy](#design-philosophy)
-- [Key features](#key-features)
-- [Technology stack](#technology-stack)
-- [Current release](#current-release)
-- [Repository structure](#repository-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Available utilities](#available-utilities)
-- [Ruby and Homebrew: three rules](#ruby-and-homebrew-three-rules)
-- [Development workflow](#development-workflow)
-- [Development commands](#development-commands)
-- [Automated testing](#automated-testing)
-- [Continuous integration](#continuous-integration)
-- [Documentation](#documentation)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
-
-
-> An engineering-first framework for building, managing, validating and evolving a professional macOS
-> development workstation using modern Bash engineering practices.
-
-
-
----
-
-## Overview
+## 🧭 Overview
 
 Developer Workstation Framework is a structured, engineering-focused toolkit for building and maintaining
 a reproducible macOS development environment.
@@ -64,9 +52,7 @@ reusable libraries, automated validation, behavioral testing and continuous inte
 
 The result is a framework that is easier to understand, extend, maintain, and confidently evolve over time.
 
----
-
-## Why This Project?
+## ❓ Why This Project?
 
 Most workstation setup repositories eventually become difficult to maintain because they evolve organically:
 
@@ -81,9 +67,7 @@ engineering project with clearly separated responsibilities.
 
 Instead of treating infrastructure as a collection of scripts, the repository treats it as real software.
 
----
-
-## Design Philosophy
+## 🧱 Design Philosophy
 
 The framework is guided by several engineering principles.
 
@@ -111,9 +95,7 @@ Every utility follows the same project structure, coding standards, logging styl
 
 Configuration, testing, and validation should produce deterministic results both locally and in continuous integration environments.
 
----
-
-## Key Features
+## ✨ Key Features
 
 ### Modular Bash Architecture
 
@@ -126,8 +108,6 @@ Shared libraries eliminate duplicated logic and provide reusable functionality f
 - Backup path and manifest handling
 - ANSI color output (owned by the logging library)
 
----
-
 ### Centralized Configuration
 
 Configuration is managed through dedicated configuration files with predictable precedence.
@@ -139,8 +119,6 @@ Priority order:
 3. `config/default.conf`
 
 This allows local customization without modifying repository defaults while remaining friendly to CI pipelines.
-
----
 
 ### Built-in Utilities
 
@@ -157,14 +135,12 @@ The framework includes utilities for:
 - Cleanup
 - Shell quality validation
 
-#### Where the utilities are installed
+#### Where the Utilities Are Installed
 
 `install.sh` writes every utility to `INSTALL_DIR`, which defaults to
 `~/.local/bin`. That directory must be on your `PATH` for the utilities to be
 runnable by name; `doctor.sh` reports what it finds, and `update.sh`
 reinstalls in place. See `config/default.conf` for `INSTALL_DIR`.
-
----
 
 ### Quality Assurance
 
@@ -176,7 +152,7 @@ Every change is verified using:
 - Automated Bats behavioral tests
 - GitHub Actions Continuous Integration
 
-#### Reproducing CI locally
+#### Reproducing CI Locally
 
 - `make ci-local` prints your `bash`, `bats`, `shellcheck` and `shfmt` versions, warns when they differ from CI's pins, then runs CI's steps in order: `syntax`, `shellcheck -x`, `shfmt -d -i 4 -ci`, `bats tests`, `make check`, `make doctor`.
 - `make test-bash32` runs the whole suite under `/bin/bash`, which is bash 3.2 on macOS; it skips with a message on systems without `/bin/bash`.
@@ -185,8 +161,6 @@ Every change is verified using:
 - `make verify-protection` is also local and read-only: it asks GitHub what `main`'s branch protection requires and compares it with `.github/required-checks.txt`, because those two drifting apart makes a green PR unmergeable.
 - It is read-only and repairs nothing; run it when you want to know whether this machine still matches the repository.
 - The first two mirror `.github/workflows/quality.yml`; if CI is red, run them before pushing.
-
----
 
 ### Documentation-Driven Development
 
@@ -201,20 +175,22 @@ The repository includes:
 - Review checklist
 - Changelog
 
----
-
 ### Engineering Workflow
 
 Development follows a consistent lifecycle:
 
+<details>
+<summary><b>Click to Open the Diagram</b></summary>
+
 ```mermaid
-flowchart TD
+%%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 50, 'padding': 16}}}%%
+flowchart LR
   A["📐 Design"] --> B["⚒️ Implement"] --> C["✅ Validate"] --> D["🧪 Test"] --> E["🔍 Review"] --> F["📤 Release"]
 ```
 
----
+</details>
 
-## Technology Stack
+## 🔧 Technology Stack
 
 | Category           | Technology         |
 | ------------------ | ------------------ |
@@ -229,9 +205,7 @@ flowchart TD
 | Editor             | Visual Studio Code |
 | Documentation      | Markdown           |
 
----
-
-## Current Release
+## 🚀 Current Release
 
 **Version:** **v2.4.0**
 
@@ -246,9 +220,7 @@ flowchart TD
 - Reusable workstation utilities
 - Consistent project structure
 
----
-
-## Repository Structure
+## 📁 Repository Structure
 
 ```text
 workstation-framework/
@@ -282,9 +254,7 @@ workstation-framework/
 
 The repository is intentionally organized to separate framework logic, reusable libraries, configuration, documentation, testing, and project assets.
 
----
-
-## Prerequisites
+## ✅ Prerequisites
 
 Developer Workstation Framework currently targets macOS.
 
@@ -302,9 +272,7 @@ Recommended:
 - Visual Studio Code
 - Homebrew
 
----
-
-## Installation
+## 💾 Installation
 
 Clone the repository:
 
@@ -326,9 +294,7 @@ Verify the installation:
 ./scripts/doctor.sh
 ```
 
----
-
-## Configuration
+## ⚙️ Configuration
 
 Framework configuration is stored in the `config/` directory.
 
@@ -366,9 +332,7 @@ BACKUP_DIR=/tmp/framework-backups ./scripts/backup.sh
 
 No repository files need to be modified for temporary configuration changes.
 
----
-
-## Available Utilities
+## 🧰 Available Utilities
 
 | Script             | Description                                                                                                                       |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -384,9 +348,7 @@ No repository files need to be modified for temporary configuration changes.
 | `uninstall.sh`     | Remove framework utilities from the local system.                                                                                 |
 | `update.sh`        | Update an installed framework and perform validation.                                                                             |
 
----
-
-## Ruby and Homebrew: three rules
+## 💎 Ruby and Homebrew: Three Rules
 
 These exist because of a real event on **2026-09-16**. A RubyGems **4.0.21**
 source tree — 591 files — was written into
@@ -400,9 +362,11 @@ timestamps, its oldest per-session file begins 25 Sep, and macOS keeps no sudo
 log. Do not repeat that claim as fact.
 
 <details>
-<summary>The three rules, the guard and the harness check</summary>
+<summary><b>Click to Open the Diagram</b></summary>
 
-### 1. Never use `sudo` with `gem` or `brew`
+**The three rules, the guard and the harness check**
+
+### 1. Never Use `sudo` with `gem` or `brew`
 
 ```bash
 brew install <name>     # yes
@@ -430,7 +394,7 @@ If a root-owned file appears anyway, the fix — which needs your password — i
 sudo find /opt/homebrew -user root -exec chown -h "$(whoami)":admin {} +
 ```
 
-### 2. Never run `gem update --system`
+### 2. Never Run `gem update --system`
 
 Against a Homebrew Ruby it installs a whole RubyGems source tree into
 `site_ruby`, shadowing the one the keg ships. It is also the command the
@@ -447,7 +411,7 @@ mv /opt/homebrew/lib/ruby/site_ruby/* ~/Developer/Backups/site_ruby-stale-$TS/
 ## undo: mv ~/Developer/Backups/site_ruby-stale-$TS/* /opt/homebrew/lib/ruby/site_ruby/
 ```
 
-### 3. Run the routine through `mac-routine.sh`
+### 3. Run the Routine Through `mac-routine.sh`
 
 ```bash
 mac-routine.sh          # the real thing
@@ -484,7 +448,7 @@ sat at that password prompt for 45 minutes (VS Code, 2026-11-11), which is
 where a "48-minute" routine actually goes. Run the routine when you can be
 at the keyboard.
 
-#### Bypassing the guard
+#### Bypassing the Guard
 
 The guard is bypassed with an explicit environment variable, deliberately and
 per-invocation:
@@ -496,7 +460,7 @@ ALLOW_RISKY_GEM=1 sudo gem install <name>
 Run `bash ~/Developer/Tools/scripts/verify-setup.sh` afterwards and read the
 **Ruby/gem health** section.
 
-#### What the harness checks
+#### What the Harness Checks
 
 `lib/ruby_gem_health.sh` is the single implementation, used by
 `verify-setup.sh`, by `mac-routine.sh` between steps, and by
@@ -516,22 +480,25 @@ Every FAIL prints the exact fix. **The harness never runs `sudo`** — it prints
 the command and you run it.
 
 </details>
----
 
-## Development Workflow
+## 🔄 Development Workflow
 
 Every contribution should follow the same engineering workflow.
 
+<details>
+<summary><b>Click to Open the Diagram</b></summary>
+
 ```mermaid
-flowchart TD
+%%{init: {'flowchart': {'nodeSpacing': 40, 'rankSpacing': 50, 'padding': 16}}}%%
+flowchart LR
   A["📋 Plan"] --> B["⚒️ Implement"] --> C["✅ Validate"] --> D["🧪 Test"] --> E["🔍 Review"] --> F["💾 Commit"]
 ```
 
+</details>
+
 The objective is to maintain a repository where every change is reproducible, reviewable, and well documented.
 
----
-
-## Development Commands
+## ⌨️ Development Commands
 
 The project uses a Makefile to simplify routine tasks.
 
@@ -559,9 +526,7 @@ make check
 [PASS] Repository structure verified.
 ```
 
----
-
-## Automated Testing
+## 🧪 Automated Testing
 
 Behavioral testing is implemented using Bats.
 
@@ -583,9 +548,7 @@ Current status:
 
 - **`make test` passes with zero failures**
 
----
-
-## Continuous Integration
+## 🤖 Continuous Integration
 
 Every push and pull request automatically runs:
 
@@ -596,9 +559,7 @@ Every push and pull request automatically runs:
 
 This helps ensure that every change remains ready to merge.
 
----
-
-## Documentation
+## 📚 Documentation
 
 Detailed project documentation is available in the `docs/` directory.
 
@@ -611,9 +572,7 @@ Included documentation:
 - Commit Convention
 - Security Policy
 
----
-
-## Roadmap
+## 🗺️ Roadmap
 
 ### Future Enhancements
 
@@ -628,9 +587,7 @@ Future enhancements may include:
 
 The project will continue to prioritize maintainability, modularity, and engineering quality over rapid feature growth.
 
----
-
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome.
 
@@ -648,17 +605,13 @@ make all
 
 passes successfully.
 
----
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License.
 
 See the `LICENSE` file for details.
 
----
-
-## Acknowledgements
+## 🙏 Acknowledgements
 
 Developer Workstation Framework was built with a strong emphasis on software engineering principles rather than simple shell scripting.
 
