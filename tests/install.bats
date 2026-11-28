@@ -27,13 +27,13 @@ teardown() {
     # Create a temp file to use as INSTALL_DIR (not a directory)
     local bad_install_dir
     bad_install_dir="$(mktemp)"
-    
+
     # Run install.sh with INSTALL_DIR pointing to a file (not writable as dir)
     run env INSTALL_DIR="$bad_install_dir" bash "${SCRIPTS_DIR}/install.sh"
-    
+
     [ "$status" -ne 0 ]
     [[ "$output" == *"File exists"* ]] || [[ "$output" == *"Failed to install"* ]] || [[ "$output" == *"ERROR"* ]] || [[ "$output" == *"FAIL"* ]]
-    
+
     rm -f "$bad_install_dir"
 }
 # --- FIX 2: a reinstall prunes lib files that no longer exist in source --
